@@ -1,7 +1,49 @@
 package main
 
-import "fmt"
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"numerical/lexer"
+	"os"
+)
+
+func startRepl(in io.Reader, out io.Writer) error {
+	scanner := bufio.NewScanner(in)
+
+	for {
+		fmt.Fprintf(out, ">>")
+		scanned := scanner.Scan()
+
+		if !scanned {
+			continue
+		}
+
+		line := scanner.Text()
+
+		if line == "quit" {
+			break
+		}
+
+		l := lexer.NewLexer(line)
+		tokens := l.Lex()
+		fmt.Println(tokens)
+	}
+
+	return nil
+}
+
+func run() error {
+	err := startRepl(os.Stdin, os.Stdout)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func main() {
-	fmt.Println("Running")
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

@@ -13,7 +13,7 @@ func NewToken(tokenType string, ch byte) Token {
 
 func lookupIdentifier(identifier string) (string, error) {
 	if len(identifier) == 0 {
-		return "", errors.New("lookupIdentifier: StringLength must be greater than 0")
+		return "", errors.New("LexerError: lookupIdentifier() identifier StringLength must be greater than 0")
 	}
 
 	if token, ok := keywords[identifier]; ok {
@@ -26,11 +26,12 @@ func lookupIdentifier(identifier string) (string, error) {
 var keywords = map[string]string{
 	"in":     IN,
 	"define": DEFINE,
+	"per":    DIV,
 }
 
 const (
-	ILLEGAL = "ILLEGAL"
-	EOF     = "EOF"
+	ERROR = "ERROR"
+	EOF   = "EOF"
 
 	INT        = "INT"
 	STRING     = "STRING"
@@ -52,6 +53,7 @@ const (
 	MUL = "MUL"
 	POW = "POW"
 	MOD = "MOD"
+	NOT = "NOT"
 
 	LPAREN  = "LPAREN"
 	RPAREN  = "RPAREN"
@@ -61,8 +63,18 @@ const (
 	RBRACE  = "RBRACE"
 
 	SEMICOLON = "SEMICOLON"
+	COMMA     = "COMMA"
 	ARROW     = "ARROW"
 
 	IN     = "IN"
 	DEFINE = "DEFINE"
+
+	PROGRAM_NODE    = "PROGRAM_NODE"
+	IDENTIFIER_NODE = "IDENTIFIER_NODE"
+	INT_NODE        = "INT_NODE"
+	STRING_NODE     = "STRING_NODE"
+	FLOAT_NODE      = "FLOAT_NODE"
+	UNIT_NODE       = "UNIT_NODE"
+	BIN_OP_NODE     = "BIN_OP_NODE"
+	UNARY_OP_NODE   = "UNARY_OP_NODE"
 )

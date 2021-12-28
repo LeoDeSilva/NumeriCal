@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"numerical/lexer"
+	"numerical/parser"
 	"os"
 )
 
@@ -26,8 +27,18 @@ func startRepl(in io.Reader, out io.Writer) error {
 		}
 
 		l := lexer.NewLexer(line)
-		tokens := l.Lex()
+		tokens, err := l.Lex()
+		if err != nil {
+			return err
+		}
 		fmt.Println(tokens)
+
+		p := parser.NewParser(tokens)
+		ast, err := p.Parse()
+		if err != nil {
+			return err
+		}
+		fmt.Println(ast)
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"numerical/lexer"
 	"strconv"
 )
@@ -32,22 +33,6 @@ func (e *ProgramNode) String() string {
 	return repr
 }
 
-type IdentifierNode struct {
-	Type       string
-	Identifier string
-}
-
-func (i *IdentifierNode) Eval() Node     { return i }
-func (i *IdentifierNode) String() string { return "{IDENTIFIER_NODE:" }
-
-type IntNode struct {
-	Type  string
-	Value int
-}
-
-func (i *IntNode) Eval() Node     { return i }
-func (i *IntNode) String() string { return "{INT_NODE:" + strconv.Itoa(i.Value) + "}" }
-
 type BinOpNode struct {
 	Type      string
 	Left      Node
@@ -57,8 +42,49 @@ type BinOpNode struct {
 
 func (b *BinOpNode) Eval() Node { return b }
 func (b *BinOpNode) String() string {
-	return "{BIN_OP_NODE:" + b.Left.String() + b.Operation + b.Right.String() + "}"
+	return "{" + b.Left.String() + ":" + b.Operation + ":" + b.Right.String() + "}"
 }
+
+type UnitNode struct {
+	Type  string
+	Value Node
+	Unit  string
+}
+
+func (u *UnitNode) Eval() Node     { return u }
+func (u *UnitNode) String() string { return u.Value.String() + u.Unit }
+
+type IdentifierNode struct {
+	Type       string
+	Identifier string
+}
+
+func (i *IdentifierNode) Eval() Node     { return i }
+func (i *IdentifierNode) String() string { return i.Identifier }
+
+type IntNode struct {
+	Type  string
+	Value int
+}
+
+func (i *IntNode) Eval() Node     { return i }
+func (i *IntNode) String() string { return strconv.Itoa(i.Value) }
+
+type FloatNode struct {
+	Type  string
+	Value float64
+}
+
+func (f *FloatNode) Eval() Node     { return f }
+func (f *FloatNode) String() string { return fmt.Sprintf("%v", f.Value) }
+
+type StringNode struct {
+	Type  string
+	Value string
+}
+
+func (s *StringNode) Eval() Node     { return s }
+func (s *StringNode) String() string { return "\"" + s.Value + "\"" }
 
 // ===========PARSER==========
 
@@ -117,31 +143,63 @@ func (p *Parser) parseExpr(rbp int) (Node, error) {
 		if err != nil {
 			return &ErrorNode{lexer.ERROR}, err
 		}
-		peekRbp = preference(p.peekToken().Type)
+		peekRbp = preference(p.token.Type)
 	}
 	return left, nil
 }
 
 func (p *Parser) parsePrefix() (Node, error) {
 	//Unit -> INT/FLOAT IDENTIFIER
-	//PAREN -> ( Expr )
 	//FUNCTION -> ID ( ... )
 	switch p.token.Type {
+	case lexer.LPAREN:
+		p.advance()
+		expression, err := p.parseExpr(preference(lexer.LPAREN))
+		if err != nil {
+			return &ErrorNode{lexer.ERROR}, err
+		}
+		p.advance()
+		return expression, nil
 	case lexer.INT:
 		value, err := strconv.Atoi(p.token.Literal)
 		if err != nil {
 			return &ErrorNode{lexer.ERROR}, err
 		}
 		p.advance()
-		return &IntNode{Type: lexer.INT_NODE, Value: value}, nil
-	case lexer.LPAREN:
-
+		node := &IntNode{Type: lexer.INT_NODE, Value: value}
+		if p.token.Type == lexer.IDENTIFIER {
+			unit := p.token.Literal
+			p.advance()
+			return &UnitNode{lexer.UNIT_NODE, node, unit}, nil
+		}
+		return node, nil
+	case lexer.FLOAT:
+		value, err := strconv.ParseFloat(p.token.Literal, 64)
+		if err != nil {
+			return &ErrorNode{lexer.ERROR}, err
+		}
+		p.advance()
+		node := &FloatNode{Type: lexer.INT_NODE, Value: value}
+		if p.token.Type == lexer.IDENTIFIER {
+			unit := p.token.Literal
+			p.advance()
+			return &UnitNode{lexer.UNIT_NODE, node, unit}, nil
+		}
+		return node, nil
+	case lexer.IDENTIFIER:
+		identifier := p.token.Literal
+		p.advance()
+		return &IdentifierNode{lexer.IDENTIFIER, identifier}, nil
+	case lexer.STRING:
+		value := p.token.Literal
+		p.advance()
+		return &StringNode{lexer.STRING_NODE, value}, nil
 	}
 	return &ErrorNode{lexer.ERROR}, errors.New("SyntaxError: parsePrefix() unsupported prefix:" + p.token.Literal)
 }
 
 func (p *Parser) parseInfix(left Node, operation string) (Node, error) {
-	if !contains([]string{"EE", "NE", "LT", "GT", "LTE", "GTE", "ADD", "SUB", "MUL", "DIV", "MOD", "POW"}, p.token.Type) {
+	if !contains([]string{"EE", "NE", "LT", "GT", "LTE", "GTE", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "IN", "ARROW"}, p.token.Type) {
 		return &ErrorNode{lexer.ERROR}, errors.New("SyntaxError: parseInfix() unsupported opperator:" + p.token.Literal)
 	}
 	p.advance()
@@ -149,27 +207,30 @@ func (p *Parser) parseInfix(left Node, operation string) (Node, error) {
 	if err != nil {
 		return &ErrorNode{lexer.ERROR}, err
 	}
-
+	if operation == lexer.ARROW {
+		operation = lexer.IN
+	}
 	return &BinOpNode{Type: lexer.BIN_OP_NODE, Left: left, Operation: operation, Right: right}, nil
 }
 
 func preference(tokenType string) int {
 	var preferences = map[string]int{
+		lexer.IN:     5,
+		lexer.ARROW:  5,
 		lexer.EE:     10,
 		lexer.NE:     10,
 		lexer.GT:     10,
 		lexer.GTE:    10,
 		lexer.LT:     10,
 		lexer.LTE:    10,
+		lexer.MOD:    15,
 		lexer.ADD:    20,
 		lexer.SUB:    20,
 		lexer.MUL:    30,
 		lexer.DIV:    30,
 		lexer.POW:    40,
-		lexer.IN:     50,
-		lexer.ARROW:  50,
 		lexer.LPAREN: 0,
-		lexer.EOF:    0,
+		lexer.RPAREN: -1,
 	}
 
 	if rbp, ok := preferences[tokenType]; ok {

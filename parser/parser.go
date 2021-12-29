@@ -45,6 +45,41 @@ func (b *BinOpNode) String() string {
 	return "{" + b.Left.String() + ":" + b.Operation + ":" + b.Right.String() + "}"
 }
 
+type FunctionCallNode struct {
+	Type           string
+	Identifier     string
+	Configurations []Node
+	Parameters     []Node
+}
+
+func (f *FunctionCallNode) Eval() Node { return f }
+func (f *FunctionCallNode) String() string {
+	repr := f.Identifier + "("
+	for _, node := range f.Configurations {
+		repr += node.String()
+	}
+	repr += ")("
+	for _, node := range f.Parameters {
+		repr += node.String()
+	}
+	repr += ")"
+	return repr
+}
+
+type ArrayNode struct {
+	Type  string
+	Nodes []Node
+}
+
+func (a *ArrayNode) Eval() Node { return a }
+func (a *ArrayNode) String() string {
+	repr := "["
+	for _, node := range a.Nodes {
+		repr += node.String()
+	}
+	return repr + "]"
+}
+
 type UnitNode struct {
 	Type  string
 	Value Node
@@ -149,8 +184,6 @@ func (p *Parser) parseExpr(rbp int) (Node, error) {
 }
 
 func (p *Parser) parsePrefix() (Node, error) {
-	//Unit -> INT/FLOAT IDENTIFIER
-	//FUNCTION -> ID ( ... )
 	switch p.token.Type {
 	case lexer.LPAREN:
 		p.advance()
@@ -160,6 +193,33 @@ func (p *Parser) parsePrefix() (Node, error) {
 		}
 		p.advance()
 		return expression, nil
+	case lexer.LSQUARE:
+		nodes, err := p.parseParameters(lexer.RSQUARE)
+		if err != nil {
+			return &ErrorNode{lexer.ERROR}, err
+		}
+		p.advance()
+		return &ArrayNode{lexer.ARRAY_NODE, nodes}, nil
+	case lexer.IDENTIFIER:
+		identifier := p.token.Literal
+		p.advance()
+		if p.token.Type == lexer.LPAREN {
+			params, err := p.parseParameters(lexer.RPAREN)
+			if err != nil {
+				return &ErrorNode{lexer.ERROR}, nil
+			}
+			p.advance()
+			if p.token.Type == lexer.LPAREN {
+				paramsB, err := p.parseParameters(lexer.RPAREN)
+				if err != nil {
+					return &ErrorNode{lexer.ERROR}, err
+				}
+				p.advance()
+				return &FunctionCallNode{lexer.FUNCTION_CALL_NODE, identifier, params, paramsB}, nil
+			}
+			return &FunctionCallNode{lexer.FUNCTION_CALL_NODE, identifier, make([]Node, 0), params}, nil
+		}
+		return &IdentifierNode{lexer.IDENTIFIER, identifier}, nil
 	case lexer.INT:
 		value, err := strconv.Atoi(p.token.Literal)
 		if err != nil {
@@ -186,10 +246,6 @@ func (p *Parser) parsePrefix() (Node, error) {
 			return &UnitNode{lexer.UNIT_NODE, node, unit}, nil
 		}
 		return node, nil
-	case lexer.IDENTIFIER:
-		identifier := p.token.Literal
-		p.advance()
-		return &IdentifierNode{lexer.IDENTIFIER, identifier}, nil
 	case lexer.STRING:
 		value := p.token.Literal
 		p.advance()
@@ -213,6 +269,29 @@ func (p *Parser) parseInfix(left Node, operation string) (Node, error) {
 	return &BinOpNode{Type: lexer.BIN_OP_NODE, Left: left, Operation: operation, Right: right}, nil
 }
 
+func (p *Parser) parseParameters(terminate string) ([]Node, error) {
+	parameters := make([]Node, 0)
+	p.advance()
+	if p.token.Type == lexer.RPAREN {
+		return parameters, nil
+	}
+	for p.token.Type != terminate {
+		if p.token.Type == lexer.EOF || p.token.Type == lexer.SEMICOLON {
+			return make([]Node, 0), errors.New("SyntaxError: Unclosed parenthesis parseParameters()")
+		}
+		if p.token.Type != lexer.COMMA {
+			param, err := p.parseExpr(0)
+			if err != nil {
+				return make([]Node, 0), err
+			}
+			parameters = append(parameters, param)
+		} else {
+			p.advance()
+		}
+	}
+	return parameters, nil
+}
+
 func preference(tokenType string) int {
 	var preferences = map[string]int{
 		lexer.IN:     5,
@@ -231,6 +310,7 @@ func preference(tokenType string) int {
 		lexer.POW:    40,
 		lexer.LPAREN: 0,
 		lexer.RPAREN: -1,
+		lexer.COMMA:  -1,
 	}
 
 	if rbp, ok := preferences[tokenType]; ok {

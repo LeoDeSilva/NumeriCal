@@ -2,126 +2,11 @@ package parser
 
 import (
 	"errors"
-	"fmt"
 	"numerical/lexer"
 	"strconv"
 )
 
-type Node interface {
-	Eval() Node
-	String() string
-}
-
-type ErrorNode struct {
-	Type string
-}
-
-func (e *ErrorNode) Eval() Node     { return e }
-func (e *ErrorNode) String() string { return "{ERROR_NODE}" }
-
-type ProgramNode struct {
-	Type  string
-	Nodes []Node
-}
-
-func (p *ProgramNode) Eval() Node { return p }
-func (e *ProgramNode) String() string {
-	repr := "{PROGRAM_NODE:"
-	for _, node := range e.Nodes {
-		repr += node.String()
-	}
-	return repr
-}
-
-type BinOpNode struct {
-	Type      string
-	Left      Node
-	Operation string
-	Right     Node
-}
-
-func (b *BinOpNode) Eval() Node { return b }
-func (b *BinOpNode) String() string {
-	return "{" + b.Left.String() + ":" + b.Operation + ":" + b.Right.String() + "}"
-}
-
-type FunctionCallNode struct {
-	Type           string
-	Identifier     string
-	Configurations []Node
-	Parameters     []Node
-}
-
-func (f *FunctionCallNode) Eval() Node { return f }
-func (f *FunctionCallNode) String() string {
-	repr := f.Identifier + "("
-	for _, node := range f.Configurations {
-		repr += node.String()
-	}
-	repr += ")("
-	for _, node := range f.Parameters {
-		repr += node.String()
-	}
-	repr += ")"
-	return repr
-}
-
-type ArrayNode struct {
-	Type  string
-	Nodes []Node
-}
-
-func (a *ArrayNode) Eval() Node { return a }
-func (a *ArrayNode) String() string {
-	repr := "["
-	for _, node := range a.Nodes {
-		repr += node.String()
-	}
-	return repr + "]"
-}
-
-type UnitNode struct {
-	Type  string
-	Value Node
-	Unit  string
-}
-
-func (u *UnitNode) Eval() Node     { return u }
-func (u *UnitNode) String() string { return u.Value.String() + u.Unit }
-
-type IdentifierNode struct {
-	Type       string
-	Identifier string
-}
-
-func (i *IdentifierNode) Eval() Node     { return i }
-func (i *IdentifierNode) String() string { return i.Identifier }
-
-type IntNode struct {
-	Type  string
-	Value int
-}
-
-func (i *IntNode) Eval() Node     { return i }
-func (i *IntNode) String() string { return strconv.Itoa(i.Value) }
-
-type FloatNode struct {
-	Type  string
-	Value float64
-}
-
-func (f *FloatNode) Eval() Node     { return f }
-func (f *FloatNode) String() string { return fmt.Sprintf("%v", f.Value) }
-
-type StringNode struct {
-	Type  string
-	Value string
-}
-
-func (s *StringNode) Eval() Node     { return s }
-func (s *StringNode) String() string { return "\"" + s.Value + "\"" }
-
-// ===========PARSER==========
+/* ---------------------------- Parser Structure ---------------------------- */
 
 type Parser struct {
 	tokens   []lexer.Token
@@ -160,11 +45,78 @@ func (p *Parser) Parse() (ProgramNode, error) {
 }
 
 func (p *Parser) parseExpression() (Node, error) {
+	if p.token.Type == lexer.IDENTIFIER && p.peekToken().Type == lexer.EQ {
+		expr, err := p.parseAssignment()
+		if err != nil {
+			return &ErrorNode{lexer.ERROR}, err
+		}
+		return expr, nil
+	}
+
+	if p.token.Type == lexer.DEFINE {
+		expr, err := p.parseFunctionDefenition()
+		if err != nil {
+			return &ErrorNode{lexer.ERROR}, err
+		}
+		return expr, nil
+	}
+
 	expr, err := p.parseExpr(0)
 	if err != nil {
 		return &ErrorNode{lexer.ERROR}, err
 	}
 	return expr, nil
+}
+
+func (p *Parser) parseFunctionDefenition() (Node, error) {
+	var err error
+	p.advance()
+	identifer := p.token.Literal
+	p.advance()
+	paramsA := make([]Node, 0)
+	paramsB := make([]Node, 0)
+	if p.token.Type == lexer.LPAREN {
+		paramsB, err = p.parseParameters(lexer.RPAREN)
+		if err != nil {
+			return &ErrorNode{lexer.ERROR}, err
+		}
+		p.advance()
+		if p.token.Type == lexer.LPAREN {
+			paramsA = paramsB
+			paramsB, err = p.parseParameters(lexer.RPAREN)
+			if err != nil {
+				return &ErrorNode{lexer.ERROR}, err
+			}
+			p.advance()
+		}
+	}
+
+	if p.token.Type != lexer.ARROW {
+		return &ErrorNode{lexer.ERROR}, errors.New("SyntaxError: expected => while parsing functionDefenition")
+	}
+
+	p.advance()
+	consequence := ProgramNode{Type: lexer.PROGRAM_NODE, Nodes: make([]Node, 0)}
+	for p.token.Type != lexer.EOF && p.token.Type != lexer.SEMICOLON {
+		expr, err := p.parseExpression()
+		if err != nil {
+			return &ErrorNode{lexer.ERROR}, nil
+		}
+		consequence.Nodes = append(consequence.Nodes, expr)
+	}
+
+	return &FunctionDefenitionNode{lexer.FUNCTION_DEFENITION_NODE, identifer, paramsA, paramsB, consequence}, nil
+}
+
+func (p *Parser) parseAssignment() (Node, error) {
+	identifier := p.token.Literal
+	p.advance()
+	p.advance()
+	expr, err := p.parseExpr(0)
+	if err != nil {
+		return &ErrorNode{lexer.ERROR}, err
+	}
+	return &AssignNode{lexer.ASSIGN_NODE, identifier, expr}, nil
 }
 
 func (p *Parser) parseExpr(rbp int) (Node, error) {
@@ -193,6 +145,7 @@ func (p *Parser) parsePrefix() (Node, error) {
 		}
 		p.advance()
 		return expression, nil
+
 	case lexer.LSQUARE:
 		nodes, err := p.parseParameters(lexer.RSQUARE)
 		if err != nil {
@@ -200,6 +153,7 @@ func (p *Parser) parsePrefix() (Node, error) {
 		}
 		p.advance()
 		return &ArrayNode{lexer.ARRAY_NODE, nodes}, nil
+
 	case lexer.IDENTIFIER:
 		identifier := p.token.Literal
 		p.advance()
@@ -220,6 +174,7 @@ func (p *Parser) parsePrefix() (Node, error) {
 			return &FunctionCallNode{lexer.FUNCTION_CALL_NODE, identifier, make([]Node, 0), params}, nil
 		}
 		return &IdentifierNode{lexer.IDENTIFIER, identifier}, nil
+
 	case lexer.INT:
 		value, err := strconv.Atoi(p.token.Literal)
 		if err != nil {
@@ -233,6 +188,7 @@ func (p *Parser) parsePrefix() (Node, error) {
 			return &UnitNode{lexer.UNIT_NODE, node, unit}, nil
 		}
 		return node, nil
+
 	case lexer.FLOAT:
 		value, err := strconv.ParseFloat(p.token.Literal, 64)
 		if err != nil {
@@ -246,6 +202,7 @@ func (p *Parser) parsePrefix() (Node, error) {
 			return &UnitNode{lexer.UNIT_NODE, node, unit}, nil
 		}
 		return node, nil
+
 	case lexer.STRING:
 		value := p.token.Literal
 		p.advance()
@@ -255,11 +212,15 @@ func (p *Parser) parsePrefix() (Node, error) {
 }
 
 func (p *Parser) parseInfix(left Node, operation string) (Node, error) {
-	if !contains([]string{"EE", "NE", "LT", "GT", "LTE", "GTE", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "IN", "ARROW"}, p.token.Type) {
+	if !contains([]string{
+		"EE", "NE", "LT", "GT", "LTE", "GTE", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "IN", "ARROW",
+	}, p.token.Type) {
 		return &ErrorNode{lexer.ERROR}, errors.New("SyntaxError: parseInfix() unsupported opperator:" + p.token.Literal)
 	}
+
 	p.advance()
-	right, err := p.parseExpr(preference(operation) + 1) //-1
+	right, err := p.parseExpr(preference(operation) + 1)
+
 	if err != nil {
 		return &ErrorNode{lexer.ERROR}, err
 	}

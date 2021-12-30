@@ -60,14 +60,28 @@ func TestParser_Parse(t *testing.T) {
 		wantRes ProgramNode
 		wantErr bool
 	}{
-		{"1+2", ProgramNode{lexer.PROGRAM_NODE, []Node{&BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.ADD, &IntNode{lexer.INT_NODE, 2}}}}, false},
-		{"1-2", ProgramNode{lexer.PROGRAM_NODE, []Node{&BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.SUB, &IntNode{lexer.INT_NODE, 2}}}}, false},
-		{"(1+2)*3", ProgramNode{lexer.PROGRAM_NODE, []Node{&BinOpNode{lexer.BIN_OP_NODE, &BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.ADD, &IntNode{lexer.INT_NODE, 2}}, lexer.MUL, &IntNode{lexer.INT_NODE, 3}}}}, false},
+		{"1+2", ProgramNode{lexer.PROGRAM_NODE, []Node{
+			&BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.ADD, &IntNode{lexer.INT_NODE, 2}}},
+		}, false},
+
+		{"1-2", ProgramNode{lexer.PROGRAM_NODE, []Node{
+			&BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.SUB, &IntNode{lexer.INT_NODE, 2}}},
+		}, false},
+
+		{"(1+2)*3", ProgramNode{lexer.PROGRAM_NODE, []Node{
+			&BinOpNode{lexer.BIN_OP_NODE,
+				&BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.ADD, &IntNode{lexer.INT_NODE, 2}},
+				lexer.MUL,
+				&IntNode{lexer.INT_NODE, 3}}},
+		}, false},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			l := lexer.NewLexer(tt.program)
 			tokens, err := l.Lex()
+			if err != nil {
+				t.Errorf("Lexer.Lex() error = %v", err)
+			}
 			p := NewParser(tokens)
 			got, err := p.Parse()
 			if (err != nil) != tt.wantErr {

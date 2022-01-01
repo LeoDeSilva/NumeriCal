@@ -84,6 +84,8 @@ func (l *Lexer) nextToken() (Token, error) {
 		tok = NewToken(RBRACE, l.ch)
 	case ';':
 		tok = NewToken(SEMICOLON, l.ch)
+	case '~':
+		tok = NewToken(TILDE, l.ch)
 	case '=':
 		tok = l.readDouble(EQ, map[byte]string{'=': EE, '>': ARROW})
 	case '>':

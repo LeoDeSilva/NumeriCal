@@ -1,0 +1,17 @@
+github.com/Knetic/govaluate v3.0.0+incompatible h1:7o6+MAPhYTCF0+fdvoz1xDedhRb4f6s9Tn1Tt7/WTEg=
+github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
+github.com/bcicen/bfstree v0.0.0-20180121191807-11ea469698a6/go.mod h1:NGUP3sYHSYkZouX/Ml1bq4O/VFwuT1si8UZELj7iPQo=
+github.com/bcicen/bfstree v0.0.0-20200329162357-95f698fa66f9 h1:1tDzGifCSBgXuTVaVtorb0krGzjtocbrzmuo2NgHeTU=
+github.com/bcicen/bfstree v0.0.0-20200329162357-95f698fa66f9/go.mod h1:NGUP3sYHSYkZouX/Ml1bq4O/VFwuT1si8UZELj7iPQo=
+github.com/bcicen/go-units v1.0.2 h1:MRoxxrzpov4qmF3Zmb9GRBzAm3co5K/8BH+Ecbz0epw=
+github.com/bcicen/go-units v1.0.2/go.mod h1:sI4AZ0qBGjhI0maI6wC+yMGrOMTK9N7qf1bxND8xBLM=
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/disiqueira/gocurrency v0.0.0-20170319121158-085df9aea731 h1:kPggTMiR5XD7a0nivho77l5Fwf4f2bEK9tQwoPYOYhE=
+github.com/disiqueira/gocurrency v0.0.0-20170319121158-085df9aea731/go.mod h1:qU/ayE5Wtx9wxgk78oOOqEwQdbmjboPApXNO2Cu/NSU=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/shopspring/decimal v1.3.1 h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5gKV8=
+github.com/shopspring/decimal v1.3.1/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
+github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=

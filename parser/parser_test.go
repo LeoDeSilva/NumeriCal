@@ -60,19 +60,19 @@ func TestParser_Parse(t *testing.T) {
 		wantRes ProgramNode
 		wantErr bool
 	}{
-		{"1+2", ProgramNode{lexer.PROGRAM_NODE, []Node{
-			&BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.ADD, &IntNode{lexer.INT_NODE, 2}}},
+		{"1+2", ProgramNode{[]Node{
+			&BinOpNode{&IntNode{1}, lexer.ADD, &IntNode{2}}},
 		}, false},
 
-		{"1-2", ProgramNode{lexer.PROGRAM_NODE, []Node{
-			&BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.SUB, &IntNode{lexer.INT_NODE, 2}}},
+		{"1-2", ProgramNode{[]Node{
+			&BinOpNode{&IntNode{1}, lexer.SUB, &IntNode{2}}},
 		}, false},
 
-		{"(1+2)*3", ProgramNode{lexer.PROGRAM_NODE, []Node{
-			&BinOpNode{lexer.BIN_OP_NODE,
-				&BinOpNode{lexer.BIN_OP_NODE, &IntNode{lexer.INT_NODE, 1}, lexer.ADD, &IntNode{lexer.INT_NODE, 2}},
+		{"(1+2)*3", ProgramNode{[]Node{
+			&BinOpNode{
+				&BinOpNode{&IntNode{1}, lexer.ADD, &IntNode{2}},
 				lexer.MUL,
-				&IntNode{lexer.INT_NODE, 3}}},
+				&IntNode{3}}},
 		}, false},
 	}
 	for i, tt := range tests {

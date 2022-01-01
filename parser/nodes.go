@@ -2,52 +2,46 @@ package parser
 
 import (
 	"fmt"
-	"strconv"
+	"numerical/lexer"
 )
 
 /* ---------------------------------- Nodes --------------------------------- */
 
 type Node interface {
-	Eval() Node
+	Type() string
 	String() string
 }
 
-type ErrorNode struct {
-	Type string
-}
+type ErrorNode struct{}
 
-func (e *ErrorNode) Eval() Node     { return e }
+func (e *ErrorNode) Type() string   { return lexer.ERROR }
 func (e *ErrorNode) String() string { return "{ERROR_NODE}" }
 
 type ProgramNode struct {
-	Type  string
 	Nodes []Node
 }
 
-func (p *ProgramNode) Eval() Node { return p }
+func (p *ProgramNode) Type() string { return lexer.PROGRAM_NODE }
 func (e *ProgramNode) String() string {
-	repr := "{PROGRAM_NODE:"
-	for _, node := range e.Nodes {
+	repr := "["
+	for i, node := range e.Nodes {
 		repr += node.String()
+		if i != len(e.Nodes)-1 {
+			repr += ","
+		}
 	}
-	return repr
+	return repr + "]"
 }
 
 type FunctionDefenitionNode struct {
-	Type           string
-	Identifier     string
-	Configurations []Node
-	Parameters     []Node
-	Consequence    ProgramNode
+	Identifier  string
+	Parameters  []Node
+	Consequence ProgramNode
 }
 
-func (f *FunctionDefenitionNode) Eval() Node { return f }
+func (f *FunctionDefenitionNode) Type() string { return lexer.FUNCTION_DEFENITION_NODE }
 func (f *FunctionDefenitionNode) String() string {
-	repr := "{DEFINE:" + f.Identifier + "("
-	for _, node := range f.Configurations {
-		repr += node.String()
-	}
-	repr += ")("
+	repr := "(" + f.Identifier + "("
 	for _, node := range f.Parameters {
 		repr += node.String()
 	}
@@ -55,61 +49,60 @@ func (f *FunctionDefenitionNode) String() string {
 	for _, node := range f.Consequence.Nodes {
 		repr += node.String()
 	}
-	return repr
+	return repr + ")"
 }
 
 type AssignNode struct {
-	Type       string
 	Identifier string
 	Expression Node
 }
 
-func (a *AssignNode) Eval() Node { return a }
+func (a *AssignNode) Type() string { return lexer.ASSIGN_NODE }
 func (a *AssignNode) String() string {
-	return "ASSIGN~{" + a.Identifier + "=" + a.Expression.String() + "}"
+	return "(" + a.Identifier + "=" + a.Expression.String() + ")"
 }
 
 type BinOpNode struct {
-	Type      string
 	Left      Node
 	Operation string
 	Right     Node
 }
 
-func (b *BinOpNode) Eval() Node { return b }
+func (b *BinOpNode) Type() string { return lexer.BIN_OP_NODE }
 func (b *BinOpNode) String() string {
-	return "BINOP~{" + b.Left.String() + ":" + b.Operation + ":" + b.Right.String() + "}"
+	return "(" + b.Left.String() + ":" + b.Operation + ":" + b.Right.String() + ")"
 }
+
+type UnaryOpNode struct {
+	Operation string
+	Right     Node
+}
+
+func (u *UnaryOpNode) Type() string   { return lexer.UNARY_OP_NODE }
+func (u *UnaryOpNode) String() string { return "(" + u.Operation + ":" + u.Right.String() + ")" }
 
 type FunctionCallNode struct {
-	Type           string
-	Identifier     string
-	Configurations []Node
-	Parameters     []Node
+	Identifier string
+	Parameters ProgramNode
 }
 
-func (f *FunctionCallNode) Eval() Node { return f }
+func (f *FunctionCallNode) Type() string { return lexer.FUNCTION_CALL_NODE }
 func (f *FunctionCallNode) String() string {
-	repr := f.Identifier + "("
-	for _, node := range f.Configurations {
+	repr := "(" + f.Identifier + "("
+	for _, node := range f.Parameters.Nodes {
 		repr += node.String()
 	}
-	repr += ")("
-	for _, node := range f.Parameters {
-		repr += node.String()
-	}
-	repr += ")"
+	repr += "))"
 	return repr
 }
 
 type ArrayNode struct {
-	Type  string
 	Nodes []Node
 }
 
-func (a *ArrayNode) Eval() Node { return a }
+func (a *ArrayNode) Type() string { return lexer.ARRAY_NODE }
 func (a *ArrayNode) String() string {
-	repr := "ARRAY~["
+	repr := "["
 	for _, node := range a.Nodes {
 		repr += node.String() + ","
 	}
@@ -117,42 +110,37 @@ func (a *ArrayNode) String() string {
 }
 
 type UnitNode struct {
-	Type  string
 	Value Node
 	Unit  string
 }
 
-func (u *UnitNode) Eval() Node     { return u }
-func (u *UnitNode) String() string { return "UNIT~" + u.Value.String() + u.Unit }
+func (u *UnitNode) Type() string   { return lexer.UNIT_NODE }
+func (u *UnitNode) String() string { return u.Value.String() + u.Unit }
 
 type IdentifierNode struct {
-	Type       string
 	Identifier string
 }
 
-func (i *IdentifierNode) Eval() Node     { return i }
-func (i *IdentifierNode) String() string { return "IDENTIFIER~" + i.Identifier }
+func (i *IdentifierNode) Type() string   { return lexer.IDENTIFIER_NODE }
+func (i *IdentifierNode) String() string { return i.Identifier }
 
 type IntNode struct {
-	Type  string
 	Value int
 }
 
-func (i *IntNode) Eval() Node     { return i }
-func (i *IntNode) String() string { return "INT~" + strconv.Itoa(i.Value) }
+func (i *IntNode) Type() string   { return lexer.INT_NODE }
+func (i *IntNode) String() string { return fmt.Sprintf("%d", i.Value) }
 
 type FloatNode struct {
-	Type  string
 	Value float64
 }
 
-func (f *FloatNode) Eval() Node     { return f }
-func (f *FloatNode) String() string { return "FLOAT~" + fmt.Sprintf("%v", f.Value) }
+func (f *FloatNode) Type() string   { return lexer.FLOAT_NODE }
+func (f *FloatNode) String() string { return fmt.Sprintf("%v", f.Value) }
 
 type StringNode struct {
-	Type  string
 	Value string
 }
 
-func (s *StringNode) Eval() Node     { return s }
-func (s *StringNode) String() string { return "STRING~" + "\"" + s.Value + "\"" }
+func (s *StringNode) Type() string   { return lexer.STRING_NODE }
+func (s *StringNode) String() string { return "\"" + s.Value + "\"" }

@@ -31,6 +31,7 @@ var keywords = map[string]string{
 
 const (
 	ERROR = "ERROR"
+	NIL   = "NIL"
 	EOF   = "EOF"
 
 	INT        = "INT"
@@ -65,6 +66,7 @@ const (
 	SEMICOLON = "SEMICOLON"
 	COMMA     = "COMMA"
 	ARROW     = "ARROW"
+	TILDE     = "TILDE"
 
 	IN     = "IN"
 	DEFINE = "DEFINE"
@@ -81,4 +83,17 @@ const (
 	ARRAY_NODE               = "ARRAY_NODE"
 	ASSIGN_NODE              = "ASSIGN_NODE"
 	FUNCTION_DEFENITION_NODE = "FUNCTION_DEFENITION_NODE"
+
+	INT_OBJ                 = "INT_OBJ"
+	FLOAT_OBJ               = "FLOAT_OBJ"
+	IDENTIFIER_OBJ          = "IDENTIFIER_OBJ"
+	UNIT_OBJ                = "UNIT_OBJ"
+	ARRAY_OBJ               = "ARRAY_OBJ"
+	FUNCTION_CALL_OBJ       = "FUNCTION_CALL_OBJ"
+	STRING_OBJ              = "STRING_OBJ"
+	PROGRAM_OBJ             = "PROGRAM_OBJ"
+	BIN_OP_OBJ              = "BIN_OP_OBJ"
+	UNARY_OP_OBJ            = "UNARY_OP_OBJ"
+	ASSIGN_OBJ              = "ASSIGN_OBJ"
+	FUNCTION_DEFENITION_OBJ = "FUNCTION_DEFENITION_OBJ"
 )

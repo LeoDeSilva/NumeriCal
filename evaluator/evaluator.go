@@ -7,8 +7,17 @@ import (
 	"numerical/parser"
 	"strings"
 
+	"github.com/adrg/strutil"
+	"github.com/adrg/strutil/metrics"
 	units "github.com/bcicen/go-units"
 )
+
+/* ----------------------------- Define Go Units ---------------------------- */
+
+func DefineUnits() {
+	Week := units.NewUnit("week", "weeks")
+	units.NewRatioConversion(Week, units.Day, 7.0)
+}
 
 /* --------------------------- Evaluator Functions -------------------------- */
 
@@ -55,14 +64,35 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 		return &Nil{}, nil
 
 	case *parser.IdentifierNode:
-		if value, ok := environment.Variables[n.Identifier]; ok {
+		if value, ok := environment.Constants[n.Identifier]; ok {
 			return value, nil
 		}
+
 		element, err := lookupElements(n.Identifier, environment.PeriodicTable)
 		if err == nil {
 			return formatFloat(element["atomic_mass"].(float64)), nil
 		}
-		return &Error{}, errors.New("VarAccessError: Undefined variable identifier " + n.Identifier)
+
+		if value, ok := environment.Variables[n.Identifier]; ok {
+			return value, nil
+		} else {
+			if len(environment.Variables) < 1 {
+				return &Error{}, errors.New("VarAccessError: Undefined variable identifier " + n.Identifier)
+			}
+
+			maxIdentifier := ""
+			maxSimilarity := 0.0
+
+			for variable := range environment.Variables {
+				similarity := similarity(n.Identifier, variable)
+				if similarity > maxSimilarity {
+					maxSimilarity = similarity
+					maxIdentifier = variable
+				}
+			}
+
+			return environment.Variables[maxIdentifier], nil
+		}
 
 	case *parser.IntNode:
 		return &Integer{Value: n.Value}, nil
@@ -337,7 +367,7 @@ func convert(u float64, from string, to string) (*Unit, error) {
 
 func lookupElements(elementIdentifier string, periodicTable map[string]interface{}) (map[string]interface{}, error) {
 	for _, element := range periodicTable["elements"].([]interface{}) {
-		if strings.EqualFold(element.(map[string]interface{})["symbol"].(string), elementIdentifier) {
+		if element.(map[string]interface{})["symbol"].(string) == elementIdentifier {
 			return element.(map[string]interface{}), nil
 
 		} else if strings.EqualFold(element.(map[string]interface{})["name"].(string), elementIdentifier) {
@@ -346,4 +376,19 @@ func lookupElements(elementIdentifier string, periodicTable map[string]interface
 	}
 
 	return map[string]interface{}{}, errors.New("EvaluationError: Identifier undefined")
+}
+
+func similarity(a, b string) float64 {
+	sequencer := strutil.Similarity(a, b, metrics.NewLevenshtein())
+
+	i := 0
+	for i < len(a) && i < len(b) {
+		if a[i] != b[i] {
+			break
+		}
+		i++
+	}
+
+	consecutiveCertainty := i / len(a)
+	return (float64(consecutiveCertainty) * 0.5) + (sequencer * 0.5)
 }

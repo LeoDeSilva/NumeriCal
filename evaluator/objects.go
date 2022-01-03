@@ -8,8 +8,16 @@ import (
 
 type Environment struct {
 	Variables     map[string]Object
+	Constants     map[string]Object
 	Functions     map[string]*parser.FunctionDefenitionNode
 	PeriodicTable map[string]interface{}
+}
+
+func GenerateConstants() map[string]Object {
+	return map[string]Object{
+		"PI": formatFloat(3.141592),
+		"E":  formatFloat(2.718281),
+	}
 }
 
 type Object interface {

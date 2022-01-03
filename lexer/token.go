@@ -26,7 +26,7 @@ func lookupIdentifier(identifier string) (string, error) {
 var keywords = map[string]string{
 	"in":     IN,
 	"define": DEFINE,
-	"per":    DIV,
+	// "per":    DIV,
 }
 
 const (

@@ -41,7 +41,12 @@ func startRepl(in io.Reader, out io.Writer) error {
 	var periodicTableJson map[string]interface{}
 	json.Unmarshal([]byte(periodicTable), &periodicTableJson)
 
-	environment := evaluator.Environment{Variables: make(map[string]evaluator.Object), Functions: make(map[string]*parser.FunctionDefenitionNode), PeriodicTable: periodicTableJson}
+	environment := evaluator.Environment{
+		Variables:     make(map[string]evaluator.Object),
+		Functions:     make(map[string]*parser.FunctionDefenitionNode),
+		PeriodicTable: periodicTableJson,
+		Constants:     evaluator.GenerateConstants(),
+	}
 
 	for {
 		fmt.Fprintf(out, ">>")
@@ -69,6 +74,7 @@ func startRepl(in io.Reader, out io.Writer) error {
 }
 
 func main() {
+	evaluator.DefineUnits()
 	if len(os.Args) > 1 {
 		periodicTable, _ := ioutil.ReadFile("/Users/ldesilva/Documents/Personal/Coding/Golang/NumeriCal/evaluator/periodicTable.json")
 		var periodicTableJson map[string]interface{}
@@ -77,6 +83,7 @@ func main() {
 			Variables:     make(map[string]evaluator.Object),
 			Functions:     make(map[string]*parser.FunctionDefenitionNode),
 			PeriodicTable: periodicTableJson,
+			Constants:     evaluator.GenerateConstants(),
 		}
 
 		program := strings.Join(os.Args[1:], " ")

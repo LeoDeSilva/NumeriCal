@@ -51,6 +51,13 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 		}
 		return handleReturn(&Unit{Value: value.(Number).Inspect(), Unit: n.Unit}, nil)
 
+	case *parser.PercentageNode:
+		value, err := Eval(n.Value, environment)
+		if err != nil {
+			return &Error{}, err
+		}
+		return &Percentage{value.(Number).Inspect() / 100}, nil
+
 	case *parser.FunctionDefenitionNode:
 		environment.Functions[n.Identifier] = n
 		return &Nil{}, nil
@@ -233,18 +240,9 @@ func evalBinaryOp(node *parser.BinOpNode, environment Environment) (Object, erro
 		return &Error{}, err
 	}
 
-	if node.Operation == lexer.IN && node.Right.Type() == lexer.IDENTIFIER_NODE {
-		toIdentifier := node.Right.(*parser.IdentifierNode).Identifier
-
-		if leftUnit, ok := left.(*Unit); ok {
-			return convert(leftUnit.Inspect(), leftUnit.Unit, toIdentifier)
-
-		} else if leftUnit, ok := left.(Number); ok {
-			return convert(leftUnit.Inspect(), toIdentifier, toIdentifier)
-		}
-
-	} else if node.Operation == lexer.IN && node.Right.Type() != lexer.IDENTIFIER_NODE {
-		return &Error{}, errors.New("ConversionError: IN cannot convert " + left.Type() + " and " + node.Right.Type())
+	shouldReturn, unitNode, err := handleInOperation(node, left)
+	if shouldReturn {
+		return unitNode, err
 	}
 
 	right, err := Eval(node.Right, environment)
@@ -252,61 +250,32 @@ func evalBinaryOp(node *parser.BinOpNode, environment Environment) (Object, erro
 		return &Error{}, err
 	}
 
-	switch left := left.(type) {
-	case Number:
-		if right, ok := right.(Number); ok {
-			return handleReturn(evalNumberInfix(left, right, node.Operation))
-		}
-
-	case *String:
-		if right.Type() == lexer.STRING_OBJ {
-			return handleReturn(evalStringInfix(left, right.(*String), node.Operation))
-		}
-
-		//TODO Array Node + possibly others such as matrix
+	if leftObj, ok := left.(Factor); ok {
+		return leftObj.BinaryOperation(right, node.Operation)
 	}
 
-	return &Error{}, errors.New("BinaryOperationError: Unsupported Types: " + left.Type() + node.Operation + right.Type())
+	return &Error{}, errors.New("BinaryOperationError: Unsupported Types: " + left.Type() + " " + node.Operation + " " + right.Type())
 }
 
 /* ---------------------------- Extracted Methods --------------------------- */
 
-// String Operations, ADD
-func evalStringInfix(left *String, right *String, operation string) (Object, error) {
-	switch operation {
-	case lexer.ADD:
-		return &String{Value: left.Value + right.Value}, nil
-	}
-	return &Error{}, errors.New("BinaryOperationError: Unsupported Operation Between Strings " + operation)
-}
+// Since IN requires Identifier, must be done before evaluated,
+func handleInOperation(node *parser.BinOpNode, left Object) (bool, Object, error) {
+	if node.Operation == lexer.IN && node.Right.Type() == lexer.IDENTIFIER_NODE {
+		toIdentifier := node.Right.(*parser.IdentifierNode).Identifier
 
-// Number Expressions (UNIT, INT, FLOAT)
-func evalNumberInfix(left Number, right Number, operation string) (Object, error) {
-	leftVal := left.Inspect()
-	rightVal := right.Inspect()
+		if leftUnit, ok := left.(*Unit); ok {
+			converted, err := convert(leftUnit.Inspect(), leftUnit.Unit, toIdentifier)
+			return true, converted, err
 
-	if left.Type() == lexer.UNIT_OBJ && right.Type() == lexer.UNIT_OBJ {
-		convertedLeft, err := convert(left.(*Unit).Inspect(), left.(*Unit).Unit, right.(*Unit).Unit)
-		if err != nil {
-			return &Error{}, err
+		} else if leftUnit, ok := left.(Number); ok {
+			return true, &Unit{Value: leftUnit.Inspect(), Unit: toIdentifier}, nil
 		}
 
-		leftVal = convertedLeft.Inspect()
+	} else if node.Operation == lexer.IN && node.Right.Type() != lexer.IDENTIFIER_NODE {
+		return true, &Error{}, errors.New("ConversionError: IN cannot convert " + left.Type() + " and " + node.Right.Type())
 	}
-
-	value := formatFloat(binaryOperations(leftVal, rightVal, operation))
-
-	if left.Type() == lexer.UNIT_OBJ && right.Type() == lexer.UNIT_OBJ {
-		return &Unit{Value: value.Inspect(), Unit: right.(*Unit).Unit}, nil
-
-	} else if left.Type() == lexer.UNIT_OBJ {
-		return &Unit{Value: value.Inspect(), Unit: left.(*Unit).Unit}, nil
-
-	} else if right.Type() == lexer.UNIT_OBJ {
-		return &Unit{Value: value.Inspect(), Unit: right.(*Unit).Unit}, nil
-	}
-
-	return value, nil
+	return false, nil, nil
 }
 
 // Base Binary Operations With Floats

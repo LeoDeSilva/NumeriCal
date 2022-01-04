@@ -220,6 +220,9 @@ func (p *Parser) parsePostfix(left Node) (Node, error) {
 		unit := p.token.Literal
 		p.advance()
 		return &UnitNode{left, unit}, nil
+	} else if p.token.Type == lexer.MOD {
+		p.advance()
+		return &PercentageNode{left}, nil
 	}
 	return left, nil
 }

@@ -22,17 +22,15 @@ func frac(params Program, environment Environment) (Object, error) {
 		return &Error{}, errors.New("FracError: Expected parameters >= 2")
 	}
 
-	numerator := params.Objects[0]
-	denomenator := params.Objects[1]
+	numerator, okN := params.Objects[0].(Factor)
+	denomenator, okD := params.Objects[1].(Factor)
 
-	if numerator, ok := numerator.(Number); ok {
-		if denomenator, ok := denomenator.(Number); ok {
-			result, err := evalNumberInfix(numerator, denomenator, lexer.DIV)
-			if err != nil {
-				return &Error{}, err
-			}
-			return result, nil
+	if okN && okD {
+		result, err := numerator.BinaryOperation(denomenator, lexer.DIV)
+		if err != nil {
+			return &Error{}, err
 		}
+		return result, nil
 	}
 	return &Error{}, errors.New("BinaryOperationError: Cannot divide types, " + numerator.Type() + " and " + denomenator.Type())
 }

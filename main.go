@@ -28,7 +28,11 @@ func interpretProgram(program string, environment evaluator.Environment) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(obj.String())
+
+	objString := obj.String()
+	if objString != "" {
+		fmt.Println(objString)
+	}
 	return nil
 }
 

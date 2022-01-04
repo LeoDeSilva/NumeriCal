@@ -118,8 +118,11 @@ type ArrayNode struct {
 func (a *ArrayNode) Type() string { return lexer.ARRAY_NODE }
 func (a *ArrayNode) String() string {
 	repr := "["
-	for _, node := range a.Nodes.Nodes {
-		repr += node.String() + ","
+	for i, node := range a.Nodes.Nodes {
+		repr += node.String()
+		if i < len(a.Nodes.Nodes)-1 {
+			repr += ","
+		}
 	}
 	return repr + "]"
 }

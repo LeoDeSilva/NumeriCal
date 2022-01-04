@@ -216,11 +216,12 @@ func (p *Parser) parseUnary() (Node, error) {
 }
 
 func (p *Parser) parsePostfix(left Node) (Node, error) {
+	factors := []string{lexer.INT, lexer.FLOAT, lexer.STRING, lexer.IDENTIFIER}
 	if p.token.Type == lexer.IDENTIFIER {
 		unit := p.token.Literal
 		p.advance()
 		return &UnitNode{left, unit}, nil
-	} else if p.token.Type == lexer.MOD {
+	} else if p.token.Type == lexer.MOD && !contains(factors, p.peekToken().Type) {
 		p.advance()
 		return &PercentageNode{left}, nil
 	}

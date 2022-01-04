@@ -69,6 +69,9 @@ func TestParser_Parse(t *testing.T) {
 		{"10m", []Node{&UnitNode{&IntNode{10}, "m"}}, false},
 		{"\"hello world\"", []Node{&StringNode{"hello world"}}, false},
 		{"[1,2,3]", []Node{&ArrayNode{ProgramNode{[]Node{&IntNode{1}, &IntNode{2}, &IntNode{3}}}}}, false},
+		{"10%", []Node{&PercentageNode{&IntNode{10}}}, false},
+		{"rent%", []Node{&PercentageNode{&IdentifierNode{"rent"}}}, false},
+		{"(10+10)%", []Node{&PercentageNode{&BinOpNode{&IntNode{10}, lexer.ADD, &IntNode{10}}}}, false},
 
 		//Function Calls
 		{"print()", []Node{
@@ -122,6 +125,11 @@ func TestParser_Parse(t *testing.T) {
 		{"(", []Node{}, true},
 		{"rent =", []Node{}, true},
 		{"+10", []Node{}, true},
+		{"%", []Node{}, true},
+		{"%10", []Node{}, true},
+		{"%rent", []Node{}, true},
+		{"'rent'%", []Node{}, true},
+		{"%(10+10)", []Node{}, true},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {

@@ -84,7 +84,7 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 		return &String{Value: n.Value}, nil
 	}
 
-	return &Error{}, nil
+	return &Error{}, errors.New("EvaluationError: Undefined Node " + node.Type())
 }
 
 /* ------------------------- Extracted Eval Methods ------------------------- */
@@ -145,6 +145,7 @@ func evalFunctionCall(n *parser.FunctionCallNode, environment Environment) (Obje
 			}
 			return result, nil
 		}
+
 	} else if function, ok := environment.Functions[n.Identifier]; ok {
 		env := GenerateEnvironment()
 

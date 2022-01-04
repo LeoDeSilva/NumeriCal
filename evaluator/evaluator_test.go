@@ -20,6 +20,8 @@ func TestEval(t *testing.T) {
 		{program: "10", want: []Object{&Integer{10}}},
 		{program: "10.2", want: []Object{&Float{10.2}}},
 		{program: "10m", want: []Object{&Unit{10.0, "m"}}},
+		{program: "10%", want: []Object{&Percentage{0.1}}},
+		{program: "(10+2)%", want: []Object{&Percentage{0.12}}},
 		{program: "'hello world'", want: []Object{&String{"hello world"}}},
 		{program: "H", environment: defaultEnvironment, want: []Object{&Float{1.008}}},
 		{program: "Hydrogen", environment: defaultEnvironment, want: []Object{&Float{1.008}}},
@@ -47,6 +49,10 @@ func TestEval(t *testing.T) {
 		{program: "4>=4", want: []Object{&Integer{1}}},
 		{program: "4<2", want: []Object{&Integer{0}}},
 		{program: "10<=10", want: []Object{&Integer{1}}},
+
+		{program: "50 * 10%", want: []Object{&Integer{5}}},
+		{program: "50 + 10%", want: []Object{&Float{50.1}}},
+		{program: "10% + 10%", want: []Object{&Percentage{0.2}}},
 
 		{program: "'hello ' + 'world'", want: []Object{&String{"hello world"}}},
 

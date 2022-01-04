@@ -32,6 +32,8 @@ func (p *Parser) peekToken() lexer.Token {
 	return p.tokens[p.position+1]
 }
 
+/* ---------------------------- Parser Functions ---------------------------- */
+
 func (p *Parser) Parse() (ProgramNode, error) {
 	ast := ProgramNode{Nodes: make([]Node, 0)}
 	for p.token.Type != lexer.EOF {
@@ -47,6 +49,7 @@ func (p *Parser) Parse() (ProgramNode, error) {
 	return ast, nil
 }
 
+// Parse individual line
 func (p *Parser) parseExpression() (Node, error) {
 	if p.token.Type == lexer.IDENTIFIER && p.peekToken().Type == lexer.EQ {
 		expr, err := p.parseAssignment()
@@ -71,6 +74,7 @@ func (p *Parser) parseExpression() (Node, error) {
 	return expr, nil
 }
 
+// Extracted Expression Methods
 func (p *Parser) parseFunctionDefenition() (Node, error) {
 	var err error
 	p.advance()
@@ -97,7 +101,7 @@ func (p *Parser) parseFunctionDefenition() (Node, error) {
 		}
 		expr, err := p.parseExpression()
 		if err != nil {
-			return &ErrorNode{}, nil
+			return &ErrorNode{}, err
 		}
 		consequence.Nodes = append(consequence.Nodes, expr)
 	}
@@ -117,6 +121,9 @@ func (p *Parser) parseAssignment() (Node, error) {
 	return &AssignNode{identifier, expr}, nil
 }
 
+/* ------------------------------ Pratt Parser ------------------------------ */
+
+// Overall arithmatic expression method
 func (p *Parser) parseExpr(rbp int) (Node, error) {
 	left, err := p.parsePrefix()
 	if err != nil {
@@ -133,31 +140,32 @@ func (p *Parser) parseExpr(rbp int) (Node, error) {
 	return left, nil
 }
 
+// Prefix Expressions
 func (p *Parser) parsePrefix() (Node, error) {
 	switch p.token.Type {
-	case lexer.TILDE:
-		p.advance()
-		expression, err := p.parsePrefix()
-		if err != nil {
-			return &ErrorNode{}, err
-		}
-		return &UnaryOpNode{lexer.TILDE, expression}, nil
+	case lexer.TILDE, lexer.NOT, lexer.SUB:
+		return p.parseUnary()
 
-	case lexer.NOT:
+	case lexer.STRING:
+		value := p.token.Literal
 		p.advance()
-		expression, err := p.parsePrefix()
-		if err != nil {
-			return &ErrorNode{}, err
-		}
-		return &UnaryOpNode{lexer.NOT, expression}, nil
+		return &StringNode{value}, nil
 
-	case lexer.SUB:
-		p.advance()
-		expression, err := p.parsePrefix()
+	case lexer.INT:
+		value, err := strconv.Atoi(p.token.Literal)
 		if err != nil {
 			return &ErrorNode{}, err
 		}
-		return &UnaryOpNode{lexer.SUB, expression}, nil
+		p.advance()
+		return p.parsePostfix(&IntNode{Value: value})
+
+	case lexer.FLOAT:
+		value, err := strconv.ParseFloat(p.token.Literal, 64)
+		if err != nil {
+			return &ErrorNode{}, err
+		}
+		p.advance()
+		return p.parsePostfix(&FloatNode{Value: value})
 
 	case lexer.LPAREN:
 		p.advance()
@@ -166,12 +174,7 @@ func (p *Parser) parsePrefix() (Node, error) {
 			return &ErrorNode{}, err
 		}
 		p.advance()
-		if p.token.Type == lexer.IDENTIFIER {
-			unit := p.token.Literal
-			p.advance()
-			return &UnitNode{expression, unit}, nil
-		}
-		return expression, nil
+		return p.parsePostfix(expression)
 
 	case lexer.LSQUARE:
 		nodes, err := p.parseParameters(lexer.RSQUARE)
@@ -179,62 +182,49 @@ func (p *Parser) parsePrefix() (Node, error) {
 			return &ErrorNode{}, err
 		}
 		p.advance()
-		return &ArrayNode{nodes}, nil
+		return &ArrayNode{ProgramNode{nodes}}, nil
 
 	case lexer.IDENTIFIER:
 		identifier := p.token.Literal
 		p.advance()
+		// Parse Function Call -> ID()
 		if p.token.Type == lexer.LPAREN {
 			params, err := p.parseParameters(lexer.RPAREN)
 			if err != nil {
-				return &ErrorNode{}, nil
+				return &ErrorNode{}, err
 			}
 			p.advance()
 			return &FunctionCallNode{identifier, ProgramNode{params}}, nil
 		}
 
-		if p.token.Type == lexer.IDENTIFIER {
-			unit := p.token.Literal
-			p.advance()
-			return &UnitNode{&IdentifierNode{Identifier: identifier}, unit}, nil
-		}
-		return &IdentifierNode{identifier}, nil
+		return p.parsePostfix(&IdentifierNode{Identifier: identifier})
 
-	case lexer.INT:
-		value, err := strconv.Atoi(p.token.Literal)
-		if err != nil {
-			return &ErrorNode{}, err
-		}
-		p.advance()
-		node := &IntNode{Value: value}
-		if p.token.Type == lexer.IDENTIFIER {
-			unit := p.token.Literal
-			p.advance()
-			return &UnitNode{node, unit}, nil
-		}
-		return node, nil
-
-	case lexer.FLOAT:
-		value, err := strconv.ParseFloat(p.token.Literal, 64)
-		if err != nil {
-			return &ErrorNode{}, err
-		}
-		p.advance()
-		node := &FloatNode{Value: value}
-		if p.token.Type == lexer.IDENTIFIER {
-			unit := p.token.Literal
-			p.advance()
-			return &UnitNode{node, unit}, nil
-		}
-		return node, nil
-
-	case lexer.STRING:
-		value := p.token.Literal
-		p.advance()
-		return &StringNode{value}, nil
 	}
 	return &ErrorNode{}, errors.New("SyntaxError: parsePrefix() unsupported prefix:" + p.token.Literal)
 }
+
+// Prefix Extracted Expressions
+
+func (p *Parser) parseUnary() (Node, error) {
+	operation := p.token.Type
+	p.advance()
+	expression, err := p.parsePrefix()
+	if err != nil {
+		return &ErrorNode{}, err
+	}
+	return &UnaryOpNode{operation, expression}, nil
+}
+
+func (p *Parser) parsePostfix(left Node) (Node, error) {
+	if p.token.Type == lexer.IDENTIFIER {
+		unit := p.token.Literal
+		p.advance()
+		return &UnitNode{left, unit}, nil
+	}
+	return left, nil
+}
+
+// Infix Expressions
 
 func (p *Parser) parseInfix(left Node, operation string) (Node, error) {
 	if !contains([]string{
@@ -277,6 +267,8 @@ func (p *Parser) parseParameters(terminate string) ([]Node, error) {
 	}
 	return parameters, nil
 }
+
+/* ---------------------------- Helper Functions ---------------------------- */
 
 func preference(tokenType string) int {
 	var preferences = map[string]int{

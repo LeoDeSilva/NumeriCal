@@ -2,10 +2,8 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"numerical/evaluator"
 	"numerical/lexer"
 	"numerical/parser"
@@ -36,17 +34,7 @@ func interpretProgram(program string, environment evaluator.Environment) error {
 
 func startRepl(in io.Reader, out io.Writer) error {
 	scanner := bufio.NewScanner(in)
-	periodicTable, _ := ioutil.ReadFile("/Users/ldesilva/Documents/Personal/Coding/Golang/NumeriCal/evaluator/periodicTable.json")
-
-	var periodicTableJson map[string]interface{}
-	json.Unmarshal([]byte(periodicTable), &periodicTableJson)
-
-	environment := evaluator.Environment{
-		Variables:     make(map[string]evaluator.Object),
-		Functions:     make(map[string]*parser.FunctionDefenitionNode),
-		PeriodicTable: periodicTableJson,
-		Constants:     evaluator.GenerateConstants(),
-	}
+	environment := evaluator.GenerateEnvironment()
 
 	for {
 		fmt.Fprintf(out, ">>")
@@ -76,16 +64,7 @@ func startRepl(in io.Reader, out io.Writer) error {
 func main() {
 	evaluator.DefineUnits()
 	if len(os.Args) > 1 {
-		periodicTable, _ := ioutil.ReadFile("/Users/ldesilva/Documents/Personal/Coding/Golang/NumeriCal/evaluator/periodicTable.json")
-		var periodicTableJson map[string]interface{}
-		json.Unmarshal([]byte(periodicTable), &periodicTableJson)
-		environment := evaluator.Environment{
-			Variables:     make(map[string]evaluator.Object),
-			Functions:     make(map[string]*parser.FunctionDefenitionNode),
-			PeriodicTable: periodicTableJson,
-			Constants:     evaluator.GenerateConstants(),
-		}
-
+		environment := evaluator.GenerateEnvironment()
 		program := strings.Join(os.Args[1:], " ")
 		err := interpretProgram(program, environment)
 

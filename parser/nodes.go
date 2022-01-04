@@ -97,13 +97,13 @@ func (f *FunctionCallNode) String() string {
 }
 
 type ArrayNode struct {
-	Nodes []Node
+	Nodes ProgramNode
 }
 
 func (a *ArrayNode) Type() string { return lexer.ARRAY_NODE }
 func (a *ArrayNode) String() string {
 	repr := "["
-	for _, node := range a.Nodes {
+	for _, node := range a.Nodes.Nodes {
 		repr += node.String() + ","
 	}
 	return repr + "]"

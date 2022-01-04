@@ -14,6 +14,7 @@ import (
 
 /* ----------------------------- Define Go Units ---------------------------- */
 
+// Define any go units
 func DefineUnits() {
 	Week := units.NewUnit("week", "weeks")
 	units.NewRatioConversion(Week, units.Day, 7.0)
@@ -21,6 +22,7 @@ func DefineUnits() {
 
 /* --------------------------- Evaluator Functions -------------------------- */
 
+// Generic Eval function
 func Eval(node parser.Node, environment Environment) (Object, error) {
 	switch n := node.(type) {
 	case *parser.ProgramNode:
@@ -34,20 +36,6 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 		}
 		return &program, nil
 
-	case *parser.UnaryOpNode:
-		return handleReturn(evalUnaryOp(n, environment))
-
-	case *parser.BinOpNode:
-		return handleReturn(evalBinaryOp(n, environment))
-
-	case *parser.UnitNode:
-		value, err := Eval(n.Value, environment)
-		if err != nil {
-			return &Error{}, err
-		}
-		objectValue, objErr := isNumberObject(value)
-		return handleReturn(&Unit{Value: objectValue.Inspect(), Unit: n.Unit}, objErr)
-
 	case *parser.AssignNode:
 		value, err := Eval(n.Expression, environment)
 		if err != nil {
@@ -56,43 +44,28 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 		environment.Variables[n.Identifier] = value
 		return &Nil{}, nil
 
-	case *parser.FunctionCallNode:
-		return evalFunctionCall(n, environment)
+	case *parser.UnitNode:
+		value, err := Eval(n.Value, environment)
+		if err != nil {
+			return &Error{}, err
+		}
+		return handleReturn(&Unit{Value: value.(Number).Inspect(), Unit: n.Unit}, nil)
 
 	case *parser.FunctionDefenitionNode:
 		environment.Functions[n.Identifier] = n
 		return &Nil{}, nil
 
+	case *parser.UnaryOpNode:
+		return handleReturn(evalUnaryOp(n, environment))
+
+	case *parser.BinOpNode:
+		return handleReturn(evalBinaryOp(n, environment))
+
+	case *parser.FunctionCallNode:
+		return evalFunctionCall(n, environment)
+
 	case *parser.IdentifierNode:
-		if value, ok := environment.Constants[n.Identifier]; ok {
-			return value, nil
-		}
-
-		element, err := lookupElements(n.Identifier, environment.PeriodicTable)
-		if err == nil {
-			return formatFloat(element["atomic_mass"].(float64)), nil
-		}
-
-		if value, ok := environment.Variables[n.Identifier]; ok {
-			return value, nil
-		} else {
-			if len(environment.Variables) < 1 {
-				return &Error{}, errors.New("VarAccessError: Undefined variable identifier " + n.Identifier)
-			}
-
-			maxIdentifier := ""
-			maxSimilarity := 0.0
-
-			for variable := range environment.Variables {
-				similarity := similarity(n.Identifier, variable)
-				if similarity > maxSimilarity {
-					maxSimilarity = similarity
-					maxIdentifier = variable
-				}
-			}
-
-			return environment.Variables[maxIdentifier], nil
-		}
+		return evalIdentifier(n, environment)
 
 	case *parser.IntNode:
 		return &Integer{Value: n.Value}, nil
@@ -107,6 +80,44 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 	return &Error{}, nil
 }
 
+/* ------------------------- Extracted Eval Methods ------------------------- */
+
+// Extracted <- eval identifier (periodic table, constants and variables)
+func evalIdentifier(n *parser.IdentifierNode, environment Environment) (Object, error) {
+	if value, ok := environment.Constants[n.Identifier]; ok {
+		return value, nil
+	}
+
+	element, err := lookupElements(n.Identifier, environment.PeriodicTable)
+	if err == nil {
+		return formatFloat(element["atomic_mass"].(float64)), nil
+	}
+
+	if value, ok := environment.Variables[n.Identifier]; ok {
+		return value, nil
+
+	} else {
+		if len(environment.Variables) < 1 {
+			return &Error{}, errors.New("VarAccessError: Undefined variable identifier " + n.Identifier)
+		}
+
+		maxIdentifier := ""
+		maxSimilarity := 0.0
+
+		for variable := range environment.Variables {
+			similarity := similarity(n.Identifier, variable)
+
+			if similarity > maxSimilarity {
+				maxSimilarity = similarity
+				maxIdentifier = variable
+			}
+		}
+
+		return environment.Variables[maxIdentifier], nil
+	}
+}
+
+// Extracted <- function call (user defined or predefined)
 func evalFunctionCall(n *parser.FunctionCallNode, environment Environment) (Object, error) {
 	var functions = map[string]func(Program, Environment) (Object, error){
 		"frac":   frac,
@@ -128,15 +139,18 @@ func evalFunctionCall(n *parser.FunctionCallNode, environment Environment) (Obje
 			return result, nil
 		}
 	} else if function, ok := environment.Functions[n.Identifier]; ok {
-		env := Environment{Variables: make(map[string]Object), Functions: make(map[string]*parser.FunctionDefenitionNode)}
+		env := GenerateEnvironment()
+
 		for i, node := range n.Parameters.Nodes {
 			identifer := function.Parameters[i].(*parser.IdentifierNode).Identifier
 			result, err := Eval(node, environment)
 			if err != nil {
 				return &Error{}, err
 			}
+
 			env.Variables[identifer] = result
 		}
+
 		result, err := Eval(&function.Consequence, env)
 		if err != nil {
 			return &Error{}, err
@@ -149,6 +163,7 @@ func evalFunctionCall(n *parser.FunctionCallNode, environment Environment) (Obje
 
 /* ---------------------------- Unary Operations ---------------------------- */
 
+// Generic Unary Operation Function
 func evalUnaryOp(node *parser.UnaryOpNode, environment Environment) (Object, error) {
 	result, err := Eval(node.Right, environment)
 	if err != nil {
@@ -167,6 +182,9 @@ func evalUnaryOp(node *parser.UnaryOpNode, environment Environment) (Object, err
 	return &Error{}, errors.New("UnaryOperationError: Unsupported " + node.Operation + " Operation")
 }
 
+/* --------------------------- Extracted Functions -------------------------- */
+
+// Negate Operation -
 func evalUnarySub(node Object) (Object, error) {
 	switch n := node.(type) {
 	case *Integer:
@@ -178,6 +196,7 @@ func evalUnarySub(node Object) (Object, error) {
 	return &Error{}, errors.New("UnaryOperationError: Cannot negate type " + node.Type())
 }
 
+// Round to Integer ~
 func evalUnaryRound(node Object) (Object, error) {
 	switch n := node.(type) {
 	case *Integer:
@@ -189,6 +208,7 @@ func evalUnaryRound(node Object) (Object, error) {
 	return &Error{}, errors.New("RoundingError: cannout round type " + node.Type())
 }
 
+// Binary NOT operation !
 func evalUnaryNot(node Object) *Integer {
 	switch n := node.(type) {
 	case *Integer:
@@ -206,6 +226,7 @@ func evalUnaryNot(node Object) *Integer {
 
 /* ---------------------------- Binary Operations --------------------------- */
 
+// Generic Binary Expression
 func evalBinaryOp(node *parser.BinOpNode, environment Environment) (Object, error) {
 	left, err := Eval(node.Left, environment)
 	if err != nil {
@@ -248,6 +269,9 @@ func evalBinaryOp(node *parser.BinOpNode, environment Environment) (Object, erro
 	return &Error{}, errors.New("BinaryOperationError: Unsupported Types: " + left.Type() + node.Operation + right.Type())
 }
 
+/* ---------------------------- Extracted Methods --------------------------- */
+
+// String Operations, ADD
 func evalStringInfix(left *String, right *String, operation string) (Object, error) {
 	switch operation {
 	case lexer.ADD:
@@ -256,6 +280,7 @@ func evalStringInfix(left *String, right *String, operation string) (Object, err
 	return &Error{}, errors.New("BinaryOperationError: Unsupported Operation Between Strings " + operation)
 }
 
+// Number Expressions (UNIT, INT, FLOAT)
 func evalNumberInfix(left Number, right Number, operation string) (Object, error) {
 	leftVal := left.Inspect()
 	rightVal := right.Inspect()
@@ -284,6 +309,7 @@ func evalNumberInfix(left Number, right Number, operation string) (Object, error
 	return value, nil
 }
 
+// Base Binary Operations With Floats
 func binaryOperations(left float64, right float64, operation string) float64 {
 	var result float64
 	switch operation {
@@ -317,6 +343,7 @@ func binaryOperations(left float64, right float64, operation string) float64 {
 
 /* ---------------------------- Helper Functions ---------------------------- */
 
+// Boolean Value to int
 func boolToInt(value bool) int {
 	if value {
 		return 1
@@ -325,21 +352,15 @@ func boolToInt(value bool) int {
 	}
 }
 
-func isNumberObject(object interface{}) (Number, error) {
-	if obj, ok := object.(Number); ok {
-		return obj, nil
-	}
-	return &Integer{0}, errors.New("EvaluatorError:" + object.(Object).String() + " is not type Number")
-}
-
+// return INT if integer else format float to 5 d.p
 func formatFloat(float float64) Number {
 	if float64(int(float)) == float {
 		return &Integer{Value: int(float)}
 	}
-	// Format Float to 5 dp
 	return &Float{Value: math.Round(float*100000) / 100000}
 }
 
+// Wrapper function for repeated code
 func handleReturn(obj Object, err error) (Object, error) {
 	if err != nil {
 		return &Error{}, err
@@ -347,7 +368,8 @@ func handleReturn(obj Object, err error) (Object, error) {
 	return obj, nil
 }
 
-func convert(u float64, from string, to string) (*Unit, error) {
+// Convert UNITS
+func convert(u float64, from string, to string) (unit *Unit, err error) {
 	if from == to {
 		return &Unit{Value: u, Unit: from}, nil
 	}
@@ -362,11 +384,20 @@ func convert(u float64, from string, to string) (*Unit, error) {
 		return &Unit{}, errors.New("ConversionError: Unit " + to + " not defined")
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			unit = &Unit{}
+			err = errors.New("ConversionError: Units " + from + " and " + to + " cannot be converted")
+		}
+	}()
+
 	return &Unit{formatFloat(units.MustConvertFloat(u, leftUnit, rightUnit).Float()).Inspect(), to}, nil
 }
 
+// Find element identifier in periodic table and return element
 func lookupElements(elementIdentifier string, periodicTable map[string]interface{}) (map[string]interface{}, error) {
 	for _, element := range periodicTable["elements"].([]interface{}) {
+
 		if element.(map[string]interface{})["symbol"].(string) == elementIdentifier {
 			return element.(map[string]interface{}), nil
 
@@ -378,6 +409,7 @@ func lookupElements(elementIdentifier string, periodicTable map[string]interface
 	return map[string]interface{}{}, errors.New("EvaluationError: Identifier undefined")
 }
 
+// Return similarity of strings, 50% consec and 50% Levenshtien
 func similarity(a, b string) float64 {
 	sequencer := strutil.Similarity(a, b, metrics.NewLevenshtein())
 

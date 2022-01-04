@@ -57,23 +57,71 @@ func Test_contains(t *testing.T) {
 func TestParser_Parse(t *testing.T) {
 	tests := []struct {
 		program string
-		wantRes ProgramNode
+		wantRes []Node
 		wantErr bool
 	}{
-		{"1+2", ProgramNode{[]Node{
-			&BinOpNode{&IntNode{1}, lexer.ADD, &IntNode{2}}},
+		//Factors
+		{"i", []Node{
+			&IdentifierNode{"i"},
+		}, false},
+		{"10", []Node{&IntNode{10}}, false},
+		{"10.2", []Node{&FloatNode{10.2}}, false},
+		{"10m", []Node{&UnitNode{&IntNode{10}, "m"}}, false},
+		{"\"hello world\"", []Node{&StringNode{"hello world"}}, false},
+		{"[1,2,3]", []Node{&ArrayNode{ProgramNode{[]Node{&IntNode{1}, &IntNode{2}, &IntNode{3}}}}}, false},
+
+		//Function Calls
+		{"print()", []Node{
+			&FunctionCallNode{Identifier: "print", Parameters: ProgramNode{[]Node{}}},
+		}, false},
+		{"frac(1,2)", []Node{
+			&FunctionCallNode{Identifier: "frac", Parameters: ProgramNode{[]Node{&IntNode{1}, &IntNode{2}}}},
+		}, false},
+		{"define f(x) => x^2", []Node{
+			&FunctionDefenitionNode{
+				Identifier: "f",
+				Parameters: []Node{&IdentifierNode{Identifier: "x"}},
+				Consequence: ProgramNode{[]Node{
+					&BinOpNode{
+						&IdentifierNode{Identifier: "x"},
+						lexer.POW,
+						&IntNode{2},
+					}}}},
 		}, false},
 
-		{"1-2", ProgramNode{[]Node{
-			&BinOpNode{&IntNode{1}, lexer.SUB, &IntNode{2}}},
+		//Unary Expressions
+		{"~10", []Node{&UnaryOpNode{lexer.TILDE, &IntNode{10}}}, false},
+		{"!1", []Node{&UnaryOpNode{lexer.NOT, &IntNode{1}}}, false},
+		{"-10", []Node{&UnaryOpNode{lexer.SUB, &IntNode{10}}}, false},
+		{"-(1+2)", []Node{&UnaryOpNode{lexer.SUB, &BinOpNode{&IntNode{1}, lexer.ADD, &IntNode{2}}}}, false},
+
+		//Binary Expressions
+		{"1+2;3+4", []Node{
+			&BinOpNode{&IntNode{1}, lexer.ADD, &IntNode{2}},
+			&BinOpNode{&IntNode{3}, lexer.ADD, &IntNode{4}},
+		}, false},
+		{"1+2", []Node{
+			&BinOpNode{&IntNode{1}, lexer.ADD, &IntNode{2}},
 		}, false},
 
-		{"(1+2)*3", ProgramNode{[]Node{
+		{"1-2", []Node{
+			&BinOpNode{&IntNode{1}, lexer.SUB, &IntNode{2}},
+		}, false},
+
+		{"(1+2)*3", []Node{
 			&BinOpNode{
 				&BinOpNode{&IntNode{1}, lexer.ADD, &IntNode{2}},
 				lexer.MUL,
-				&IntNode{3}}},
+				&IntNode{3}},
 		}, false},
+		{"rent=100", []Node{
+			&AssignNode{"rent", &IntNode{100}},
+		}, false},
+
+		//Errors
+		{"(", []Node{}, true},
+		{"rent =", []Node{}, true},
+		{"+10", []Node{}, true},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -81,15 +129,16 @@ func TestParser_Parse(t *testing.T) {
 			tokens, err := l.Lex()
 			if err != nil {
 				t.Errorf("Lexer.Lex() error = %v", err)
+				return
 			}
 			p := NewParser(tokens)
 			got, err := p.Parse()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Parser.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Parser.Parse() %v error = %v, wantErr %v", got, err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.wantRes) {
-				t.Errorf("Parser.Parse() = %v, want %v", got, tt.wantRes)
+			if !reflect.DeepEqual(got, ProgramNode{tt.wantRes}) && !tt.wantErr {
+				t.Errorf("Parser.Parse() = %v, want %v", got, ProgramNode{tt.wantRes})
 			}
 		})
 	}

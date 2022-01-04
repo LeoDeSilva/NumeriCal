@@ -8,19 +8,15 @@ import (
 	"strings"
 )
 
-func paramsToString(params Program) string {
-	repr := ""
-	for _, node := range params.Objects {
-		repr += node.String()
-	}
-	return repr
-}
+/* -------------------------------- Functions ------------------------------- */
 
+// Print a string representation of the parameters
 func print(params Program, environment Environment) (Object, error) {
 	fmt.Println(paramsToString(params))
 	return &Nil{}, nil
 }
 
+// Just divide 2 numbers frac(NUMERATOR, DENOMENATOR)
 func frac(params Program, environment Environment) (Object, error) {
 	if len(params.Objects) < 2 {
 		return &Error{}, errors.New("FracError: Expected parameters >= 2")
@@ -41,6 +37,7 @@ func frac(params Program, environment Environment) (Object, error) {
 	return &Error{}, errors.New("BinaryOperationError: Cannot divide types, " + numerator.Type() + " and " + denomenator.Type())
 }
 
+// Root a number (default root is 2) root(BASE, ROOT)
 func root(params Program, environment Environment) (Object, error) {
 	root := 2.0
 	if len(params.Objects) < 1 {
@@ -59,6 +56,8 @@ func root(params Program, environment Environment) (Object, error) {
 	}
 }
 
+// Lookup element in periodic table and return JSON lookup(ELEMENT)
+// TODO: create element objects and return that instead
 func lookup(params Program, environment Environment) (Object, error) {
 	if len(params.Objects) < 1 {
 		return &Error{}, errors.New("LookupError: expected parameter length > 1")
@@ -79,4 +78,15 @@ func lookup(params Program, environment Environment) (Object, error) {
 
 	return &Nil{}, nil
 
+}
+
+/* ---------------------------- Helper Functions ---------------------------- */
+
+// Join parameters into string
+func paramsToString(params Program) string {
+	repr := ""
+	for _, node := range params.Objects {
+		repr += node.String()
+	}
+	return repr
 }

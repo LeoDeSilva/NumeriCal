@@ -78,6 +78,54 @@ func lookup(params Program, environment Environment) (Object, error) {
 
 }
 
+/* ------------------------- Trigonometry Functions ------------------------- */
+
+// Handle calling trig functions that input in radians
+func callTrig(params Program, function func(float64) float64) (Object, error) {
+	if len(params.Objects) < 1 {
+		return &Error{}, errors.New("FunctionErro: Expected parameter length > 1")
+	} else if operand, ok := params.Objects[0].(Number); ok {
+		return formatFloat(function(operand.Inspect() * (math.Pi / 180))), nil
+	}
+
+	return &Error{}, errors.New("FunctionError: Expected parameter type NUMBER")
+}
+
+// Handle calling trig functions that output in radians
+func callReverseTrig(params Program, function func(float64) float64) (Object, error) {
+	if len(params.Objects) < 1 {
+		return &Error{}, errors.New("FunctionErro: Expected parameter length > 1")
+	} else if operand, ok := params.Objects[0].(Number); ok {
+		return formatFloat(function(operand.Inspect()) * (180 / math.Pi)), nil
+	}
+
+	return &Error{}, errors.New("FunctionError: Expected parameter type NUMBER")
+}
+
+func sin(params Program, environment Environment) (Object, error) {
+	return callTrig(params, math.Sin)
+}
+
+func cos(params Program, environment Environment) (Object, error) {
+	return callTrig(params, math.Cos)
+}
+
+func tan(params Program, environment Environment) (Object, error) {
+	return callTrig(params, math.Tan)
+}
+
+func asin(params Program, environment Environment) (Object, error) {
+	return callReverseTrig(params, math.Asin)
+}
+
+func acos(params Program, environment Environment) (Object, error) {
+	return callReverseTrig(params, math.Acos)
+}
+
+func atan(params Program, environment Environment) (Object, error) {
+	return callReverseTrig(params, math.Atan)
+}
+
 /* ---------------------------- Helper Functions ---------------------------- */
 
 // Join parameters into string

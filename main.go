@@ -12,7 +12,7 @@ import (
 )
 
 func interpretProgram(program string, environment evaluator.Environment) error {
-	l := lexer.NewLexer(program)
+	l := lexer.NewLexer(strings.TrimSpace(program))
 	tokens, err := l.Lex()
 	if err != nil {
 		return err

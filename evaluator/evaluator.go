@@ -44,23 +44,17 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 		environment.Variables[n.Identifier] = value
 		return &Nil{}, nil
 
-	case *parser.UnitNode:
-		value, err := Eval(n.Value, environment)
-		if err != nil {
-			return &Error{}, err
-		}
-		return handleReturn(&Unit{Value: value.(Number).Inspect(), Unit: n.Unit}, nil)
-
-	case *parser.PercentageNode:
-		value, err := Eval(n.Value, environment)
-		if err != nil {
-			return &Error{}, err
-		}
-		return &Percentage{value.(Number).Inspect() / 100}, nil
-
 	case *parser.FunctionDefenitionNode:
 		environment.Functions[n.Identifier] = n
 		return &Nil{}, nil
+
+	case *parser.UnitNode:
+		value, err := Eval(n.Value, environment)
+		return handleReturn(&Unit{Value: value.(Number).Inspect(), Unit: n.Unit}, err)
+
+	case *parser.PercentageNode:
+		value, err := Eval(n.Value, environment)
+		return handleReturn(&Percentage{value.(Number).Inspect() / 100}, err)
 
 	case *parser.UnaryOpNode:
 		return handleReturn(evalUnaryOp(n, environment))
@@ -131,6 +125,12 @@ func evalFunctionCall(n *parser.FunctionCallNode, environment Environment) (Obje
 		"print":  print,
 		"root":   root,
 		"lookup": lookup,
+		"sin":    sin,
+		"cos":    cos,
+		"tan":    tan,
+		"asin":   asin,
+		"acos":   acos,
+		"atan":   atan,
 	}
 
 	if function, ok := functions[n.Identifier]; ok {
@@ -270,7 +270,8 @@ func handleInOperation(node *parser.BinOpNode, left Object) (bool, Object, error
 			return true, converted, err
 
 		} else if leftUnit, ok := left.(Number); ok {
-			return true, &Unit{Value: leftUnit.Inspect(), Unit: toIdentifier}, nil
+			converted, err := convert(leftUnit.Inspect(), toIdentifier, toIdentifier)
+			return true, converted, err
 		}
 
 	} else if node.Operation == lexer.IN && node.Right.Type() != lexer.IDENTIFIER_NODE {
@@ -340,6 +341,7 @@ func handleReturn(obj Object, err error) (Object, error) {
 
 // Convert UNITS
 func convert(u float64, from string, to string) (unit *Unit, err error) {
+	//TODO: Binary and Hex
 	if from == to {
 		return &Unit{Value: u, Unit: from}, nil
 	}
@@ -365,7 +367,14 @@ func convert(u float64, from string, to string) (unit *Unit, err error) {
 }
 
 // Find element identifier in periodic table and return element
-func lookupElements(elementIdentifier string, periodicTable map[string]interface{}) (map[string]interface{}, error) {
+func lookupElements(elementIdentifier string, periodicTable map[string]interface{}) (element map[string]interface{}, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			element = map[string]interface{}{}
+			err = errors.New("LookupError: Periodic Table is nil")
+		}
+	}()
+
 	for _, element := range periodicTable["elements"].([]interface{}) {
 
 		if element.(map[string]interface{})["symbol"].(string) == elementIdentifier {

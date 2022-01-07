@@ -27,6 +27,7 @@ func GenerateConstants() map[string]Object {
 	}
 }
 
+// Generates the environment and loads in the periodic table
 func GenerateEnvironment() Environment {
 	periodicTable, _ := ioutil.ReadFile("/Users/ldesilva/Documents/Personal/Coding/Golang/NumeriCal/evaluator/periodicTable.json")
 
@@ -84,6 +85,7 @@ func (p *Program) String() string {
 
 /* ----------------------------- Factor Objects ----------------------------- */
 
+// Wrapper for all objects that support binary operations
 type Factor interface {
 	Object
 	BinaryOperation(Object, string) (Object, error)

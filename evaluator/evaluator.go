@@ -68,6 +68,9 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 	case *parser.IdentifierNode:
 		return evalIdentifier(n, environment)
 
+	case *parser.DictionaryNode:
+		return evalDictionary(n, environment)
+
 	case *parser.IntNode:
 		return &Integer{Value: n.Value}, nil
 
@@ -83,6 +86,23 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 
 /* ------------------------- Extracted Eval Methods ------------------------- */
 
+// Extracted <- eval class node (periodictable.hydrogen.mass)
+func evalDictionary(n *parser.DictionaryNode, environment Environment) (Object, error) {
+	container, err := Eval(n.Container, environment)
+	if err != nil {
+		return &Error{}, errors.New("ObjectError: Undefined identifier: " + container.String())
+	}
+
+	if container.Type() != lexer.DICTIONARY_OBJ {
+		return &Error{}, errors.New("ObjectError: Object returned not type DICTIONARY")
+	}
+
+	if value, ok := container.(*Dictionary).Dictionary[n.Field.Identifier]; ok {
+		return value, nil
+	}
+	return &Error{}, errors.New("ObjectError: Undefined field referenced in object: " + n.Field.Identifier)
+}
+
 // Extracted <- eval identifier (periodic table, constants and variables)
 func evalIdentifier(n *parser.IdentifierNode, environment Environment) (Object, error) {
 	if value, ok := environment.Constants[n.Identifier]; ok {
@@ -91,7 +111,8 @@ func evalIdentifier(n *parser.IdentifierNode, environment Environment) (Object, 
 
 	element, err := lookupElements(n.Identifier, environment.PeriodicTable)
 	if err == nil {
-		return formatFloat(element["atomic_mass"].(float64)), nil
+		return element, nil
+		// return formatFloat(element["atomic_mass"].(float64)), nil
 	}
 
 	if value, ok := environment.Variables[n.Identifier]; ok {
@@ -367,10 +388,10 @@ func convert(u float64, from string, to string) (unit *Unit, err error) {
 }
 
 // Find element identifier in periodic table and return element
-func lookupElements(elementIdentifier string, periodicTable map[string]interface{}) (element map[string]interface{}, err error) {
+func lookupElements(elementIdentifier string, periodicTable map[string]interface{}) (element Object, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			element = map[string]interface{}{}
+			element = &Dictionary{}
 			err = errors.New("LookupError: Periodic Table is nil")
 		}
 	}()
@@ -378,14 +399,22 @@ func lookupElements(elementIdentifier string, periodicTable map[string]interface
 	for _, element := range periodicTable["elements"].([]interface{}) {
 
 		if element.(map[string]interface{})["symbol"].(string) == elementIdentifier {
-			return element.(map[string]interface{}), nil
+			object, err := dictionaryFromMap(element.(map[string]interface{}))
+			if err != nil {
+				return &Error{}, err
+			}
+			return object, nil
 
 		} else if strings.EqualFold(element.(map[string]interface{})["name"].(string), elementIdentifier) {
-			return element.(map[string]interface{}), nil
+			object, err := dictionaryFromMap(element.(map[string]interface{}))
+			if err != nil {
+				return &Error{}, err
+			}
+			return object, nil
 		}
 	}
 
-	return map[string]interface{}{}, errors.New("EvaluationError: Identifier undefined")
+	return &Dictionary{}, errors.New("EvaluationError: Identifier undefined")
 }
 
 // Return similarity of strings, 50% consec and 50% Levenshtien
@@ -402,4 +431,22 @@ func similarity(a, b string) float64 {
 
 	consecutiveCertainty := i / len(a)
 	return (float64(consecutiveCertainty) * 0.5) + (sequencer * 0.5)
+}
+
+func dictionaryFromMap(m map[string]interface{}) (Object, error) {
+	dictionaryObject := &Dictionary{Dictionary: make(map[string]Object)}
+	for key, value := range m {
+		switch value := value.(type) {
+		case int:
+			dictionaryObject.Dictionary[key] = formatFloat(float64(value))
+		case float64:
+			dictionaryObject.Dictionary[key] = formatFloat(value)
+		case string:
+			dictionaryObject.Dictionary[key] = &String{Value: value}
+		case bool:
+			dictionaryObject.Dictionary[key] = &Integer{Value: boolToInt(value)}
+
+		}
+	}
+	return dictionaryObject, nil
 }

@@ -83,6 +83,13 @@ func (p *Program) String() string {
 	return repr
 }
 
+type Dictionary struct {
+	Dictionary map[string]Object
+}
+
+func (d *Dictionary) Type() string   { return lexer.DICTIONARY_OBJ }
+func (d *Dictionary) String() string { return fmt.Sprintf("%T", d.Dictionary) }
+
 /* ----------------------------- Factor Objects ----------------------------- */
 
 // Wrapper for all objects that support binary operations

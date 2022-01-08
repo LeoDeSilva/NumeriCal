@@ -68,6 +68,7 @@ const (
 	COMMA     = "COMMA"
 	ARROW     = "ARROW"
 	TILDE     = "TILDE"
+	DOT       = "DOT"
 
 	IN     = "IN"
 	DEFINE = "DEFINE"
@@ -85,10 +86,10 @@ const (
 	ASSIGN_NODE              = "ASSIGN_NODE"
 	FUNCTION_DEFENITION_NODE = "FUNCTION_DEFENITION_NODE"
 	PERCENTAGE_NODE          = "PERCENTAGE_NODE"
+	DICTIONARY_NODE          = "DICTIONARY_NODE"
 
 	INT_OBJ                 = "INT_OBJ"
 	FLOAT_OBJ               = "FLOAT_OBJ"
-	IDENTIFIER_OBJ          = "IDENTIFIER_OBJ"
 	UNIT_OBJ                = "UNIT_OBJ"
 	ARRAY_OBJ               = "ARRAY_OBJ"
 	FUNCTION_CALL_OBJ       = "FUNCTION_CALL_OBJ"
@@ -99,4 +100,5 @@ const (
 	ASSIGN_OBJ              = "ASSIGN_OBJ"
 	FUNCTION_DEFENITION_OBJ = "FUNCTION_DEFENITION_OBJ"
 	PERCENTAGE_OBJ          = "PERCENTAGE_OBJ"
+	DICTIONARY_OBJ          = "DICTIONARY_OBJ"
 )

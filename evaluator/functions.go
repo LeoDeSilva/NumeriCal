@@ -68,7 +68,7 @@ func lookup(params Program, environment Environment) (Object, error) {
 		return &Error{}, errors.New("LookupError: element " + params.Objects[0].(*String).Value + " does not exist")
 	}
 
-	for key, value := range element {
+	for key, value := range element.(*Dictionary).Dictionary {
 		if strings.Contains("name appearance atomic_mass category number period phase summary symbol shells", key) {
 			fmt.Println(key, ":", value)
 		}

@@ -216,6 +216,8 @@ func (p *Parser) parseUnary() (Node, error) {
 }
 
 func (p *Parser) parsePostfix(left Node) (Node, error) {
+	// Call recursively .. e.g. for arrays, parse [0] then call again to find [0][1][2] or for classes
+	// call ID.ID then again for .ID and again for .ID etc... to make periodictable.Hydrogen.Name
 	factors := []string{lexer.INT, lexer.FLOAT, lexer.STRING, lexer.IDENTIFIER}
 	if p.token.Type == lexer.IDENTIFIER {
 		unit := p.token.Literal
@@ -224,6 +226,17 @@ func (p *Parser) parsePostfix(left Node) (Node, error) {
 	} else if p.token.Type == lexer.MOD && !contains(factors, p.peekToken().Type) {
 		p.advance()
 		return &PercentageNode{left}, nil
+	} else if p.token.Type == lexer.DOT {
+		p.advance()
+		if p.token.Type != lexer.IDENTIFIER && p.token.Type != lexer.STRING {
+			return &ErrorNode{}, errors.New("SyntaxError: Expected type STRING or IDENTIFIER after '.'")
+		}
+		identifier := &IdentifierNode{p.token.Literal}
+		p.advance()
+		if p.token.Type == lexer.DOT {
+			return p.parsePostfix(&DictionaryNode{left, *identifier})
+		}
+		return &DictionaryNode{left, *identifier}, nil
 	}
 	return left, nil
 }

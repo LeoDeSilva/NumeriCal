@@ -110,6 +110,16 @@ func (f *FunctionCallNode) String() string {
 	return repr
 }
 
+type DictionaryNode struct {
+	Container Node
+	Field     IdentifierNode
+}
+
+func (d *DictionaryNode) Type() string { return lexer.DICTIONARY_NODE }
+func (d *DictionaryNode) String() string {
+	return d.Container.String() + "." + d.Field.String()
+}
+
 // [1,2,3]
 type ArrayNode struct {
 	Nodes ProgramNode

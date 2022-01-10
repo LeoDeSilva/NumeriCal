@@ -71,7 +71,7 @@ type Program struct {
 	Objects []Object
 }
 
-func (p *Program) Type() string { return lexer.PROGRAM_OBJ }
+func (p *Program) Type() string { return lexer.PROGRAM }
 func (p *Program) String() string {
 	repr := ""
 	for i, node := range p.Objects {
@@ -87,7 +87,7 @@ type Dictionary struct {
 	Dictionary map[string]Object
 }
 
-func (d *Dictionary) Type() string   { return lexer.DICTIONARY_OBJ }
+func (d *Dictionary) Type() string   { return lexer.DICTIONARY }
 func (d *Dictionary) String() string { return fmt.Sprintf("%T", d.Dictionary) }
 
 /* ----------------------------- Factor Objects ----------------------------- */
@@ -98,12 +98,41 @@ type Factor interface {
 	BinaryOperation(Object, string) (Object, error)
 }
 
+// Array type elements are of dynamic type
+type Array struct {
+	Array []Object
+}
+
+func (a *Array) Type() string { return lexer.ARRAY }
+func (a *Array) String() string {
+	repr := "["
+	for i, node := range a.Array {
+		repr += node.String()
+		if i < len(a.Array)-1 {
+			repr += ","
+		}
+	}
+	return repr + "]"
+}
+
+func (a *Array) BinaryOperation(right Object, operation string) (Object, error) {
+	if operation != lexer.ADD {
+		return &Error{}, errors.New("BinaryOperationError: Unsupported Operation on Array, " + operation)
+	}
+
+	if r, ok := right.(*Array); ok {
+		return &Array{append(a.Array, r.Array...)}, nil
+	}
+
+	return &Array{append(a.Array, right)}, nil
+}
+
 // "Hello World"
 type String struct {
 	Value string
 }
 
-func (s *String) Type() string   { return lexer.STRING_OBJ }
+func (s *String) Type() string   { return lexer.STRING }
 func (s *String) String() string { return s.Value }
 func (s *String) BinaryOperation(right Object, operation string) (Object, error) {
 	if stringRight, ok := right.(*String); ok {
@@ -111,10 +140,10 @@ func (s *String) BinaryOperation(right Object, operation string) (Object, error)
 		case lexer.ADD:
 			return &String{s.Value + stringRight.Value}, nil
 		default:
-			return &Error{}, errors.New("BinaryOperationError: Undefined Operation " + operation + " on type STRING_OBJ")
+			return &Error{}, errors.New("BinaryOperationError: Undefined Operation " + operation + " on type STRING")
 		}
 	}
-	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types STRING_OBJ and " + right.Type())
+	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types STRING and " + right.Type())
 }
 
 /* ----------------------------- Number Objects ----------------------------- */
@@ -131,7 +160,7 @@ type Unit struct {
 	Unit  string
 }
 
-func (u *Unit) Type() string     { return lexer.UNIT_OBJ }
+func (u *Unit) Type() string     { return lexer.UNIT }
 func (u *Unit) String() string   { return fmt.Sprintf("%v", u.Value) + " " + u.Unit }
 func (u *Unit) Inspect() float64 { return u.Value }
 func (u *Unit) BinaryOperation(right Object, operation string) (Object, error) {
@@ -154,7 +183,7 @@ func (u *Unit) BinaryOperation(right Object, operation string) (Object, error) {
 		}, nil
 	}
 
-	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types UNIT_OBJ and " + right.Type())
+	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types UNIT and " + right.Type())
 }
 
 // 10%, 15%
@@ -162,7 +191,7 @@ type Percentage struct {
 	Value float64
 }
 
-func (p *Percentage) Type() string     { return lexer.PERCENTAGE_OBJ }
+func (p *Percentage) Type() string     { return lexer.PERCENTAGE }
 func (p *Percentage) String() string   { return fmt.Sprintf("%d", int(p.Value*100)) + "%" }
 func (p *Percentage) Inspect() float64 { return p.Value }
 func (p *Percentage) BinaryOperation(right Object, operation string) (Object, error) {
@@ -177,7 +206,7 @@ func (p *Percentage) BinaryOperation(right Object, operation string) (Object, er
 		return result, nil
 
 	}
-	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types PERCENTAGE_OBJ and " + right.Type())
+	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types PERCENTAGE and " + right.Type())
 }
 
 // 10, 12 etc
@@ -185,7 +214,7 @@ type Integer struct {
 	Value int
 }
 
-func (i *Integer) Type() string     { return lexer.INT_OBJ }
+func (i *Integer) Type() string     { return lexer.INT }
 func (i *Integer) String() string   { return fmt.Sprintf("%d", i.Value) }
 func (i *Integer) Inspect() float64 { return float64(i.Value) }
 func (i *Integer) BinaryOperation(right Object, operation string) (Object, error) {
@@ -197,7 +226,7 @@ func (i *Integer) BinaryOperation(right Object, operation string) (Object, error
 		}
 		return result, nil
 	}
-	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types INT_OBJ and " + right.Type())
+	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types INT and " + right.Type())
 }
 
 // 10.2, 20.4 etc
@@ -205,7 +234,7 @@ type Float struct {
 	Value float64
 }
 
-func (f *Float) Type() string     { return lexer.FLOAT_OBJ }
+func (f *Float) Type() string     { return lexer.FLOAT }
 func (f *Float) String() string   { return fmt.Sprintf("%v", f.Value) }
 func (f *Float) Inspect() float64 { return f.Value }
 func (f *Float) BinaryOperation(right Object, operation string) (Object, error) {
@@ -217,5 +246,5 @@ func (f *Float) BinaryOperation(right Object, operation string) (Object, error) 
 		}
 		return result, nil
 	}
-	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types FLOAT_OBJ and " + right.Type())
+	return &Error{}, errors.New("BinaryOperationError: Cannot operate on types FLOAT and " + right.Type())
 }

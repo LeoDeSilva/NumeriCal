@@ -23,6 +23,7 @@ func interpretProgram(program string, environment evaluator.Environment) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println(ast)
 
 	obj, err := evaluator.Eval(&ast, environment)
 	if err != nil {

@@ -59,7 +59,7 @@ func root(params Program, environment Environment) (Object, error) {
 func lookup(params Program, environment Environment) (Object, error) {
 	if len(params.Objects) < 1 {
 		return &Error{}, errors.New("LookupError: expected parameter length > 1")
-	} else if params.Objects[0].Type() != lexer.STRING_OBJ {
+	} else if params.Objects[0].Type() != lexer.STRING {
 		return &Error{}, errors.New("LookupError: expected type STRING or IDENTIFIER, not type " + params.Objects[0].Type())
 	}
 

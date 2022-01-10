@@ -182,7 +182,7 @@ func (p *Parser) parsePrefix() (Node, error) {
 			return &ErrorNode{}, err
 		}
 		p.advance()
-		return &ArrayNode{ProgramNode{nodes}}, nil
+		return p.parsePostfix(&ArrayNode{ProgramNode{Nodes: nodes}})
 
 	case lexer.IDENTIFIER:
 		identifier := p.token.Literal
@@ -223,9 +223,11 @@ func (p *Parser) parsePostfix(left Node) (Node, error) {
 		unit := p.token.Literal
 		p.advance()
 		return &UnitNode{left, unit}, nil
+
 	} else if p.token.Type == lexer.MOD && !contains(factors, p.peekToken().Type) {
 		p.advance()
 		return &PercentageNode{left}, nil
+
 	} else if p.token.Type == lexer.DOT {
 		p.advance()
 		if p.token.Type != lexer.IDENTIFIER && p.token.Type != lexer.STRING {
@@ -237,7 +239,20 @@ func (p *Parser) parsePostfix(left Node) (Node, error) {
 			return p.parsePostfix(&DictionaryNode{left, *identifier})
 		}
 		return &DictionaryNode{left, *identifier}, nil
+
+	} else if p.token.Type == lexer.LSQUARE {
+		p.advance()
+		index, err := p.parseExpr(0)
+		if err != nil {
+			return &ErrorNode{}, err
+		}
+		p.advance()
+		if p.token.Type == lexer.LSQUARE {
+			return p.parsePostfix(&IndexNode{left, index})
+		}
+		return &IndexNode{left, index}, nil
 	}
+
 	return left, nil
 }
 
@@ -246,7 +261,7 @@ func (p *Parser) parsePostfix(left Node) (Node, error) {
 func (p *Parser) parseInfix(left Node, operation string) (Node, error) {
 	if !contains([]string{
 		"EE", "NE", "LT", "GT", "LTE", "GTE", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "IN", "ARROW",
-	}, p.token.Type) {
+	}, operation) {
 		return &ErrorNode{}, errors.New("SyntaxError: parseInfix() unsupported opperator:" + p.token.Literal)
 	}
 

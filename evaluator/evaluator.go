@@ -37,12 +37,14 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 		return &program, nil
 
 	case *parser.AssignNode:
-		value, err := Eval(n.Expression, environment)
+		return evalAssign(n, environment)
+
+	case *parser.ArrayNode:
+		nodes, err := Eval(&n.Array, environment)
 		if err != nil {
 			return &Error{}, err
 		}
-		environment.Variables[n.Identifier] = value
-		return &Nil{}, nil
+		return &Array{nodes.(*Program).Objects}, nil
 
 	case *parser.FunctionDefenitionNode:
 		environment.Functions[n.Identifier] = n
@@ -55,6 +57,9 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 	case *parser.PercentageNode:
 		value, err := Eval(n.Value, environment)
 		return handleReturn(&Percentage{value.(Number).Inspect() / 100}, err)
+
+	case *parser.IndexNode:
+		return evalIndex(n, environment)
 
 	case *parser.UnaryOpNode:
 		return handleReturn(evalUnaryOp(n, environment))
@@ -86,6 +91,38 @@ func Eval(node parser.Node, environment Environment) (Object, error) {
 
 /* ------------------------- Extracted Eval Methods ------------------------- */
 
+func evalAssign(n *parser.AssignNode, environment Environment) (Object, error) {
+	value, err := Eval(n.Expression, environment)
+	if err != nil {
+		return &Error{}, err
+	}
+	environment.Variables[n.Identifier] = value
+	return &Nil{}, nil
+}
+
+func evalIndex(n *parser.IndexNode, environment Environment) (Object, error) {
+	array, err := Eval(n.Array, environment)
+	if err != nil {
+		return &Error{}, err
+	}
+
+	if array, ok := array.(*Array); ok {
+		index, err := Eval(n.Index, environment)
+		if err != nil {
+			return &Error{}, err
+		}
+		if index, ok := index.(*Integer); ok {
+			if int(index.Inspect()) >= len(array.Array) {
+				return &Error{}, errors.New("IndexError: Index out of range")
+			}
+			return array.Array[int(index.Inspect())], nil
+		} else {
+			return &Error{}, errors.New("IndexError: Index is not type INT")
+		}
+	}
+	return &Error{}, errors.New("IndexError: Array is not type ARRAY")
+}
+
 // Extracted <- eval class node (periodictable.hydrogen.mass)
 func evalDictionary(n *parser.DictionaryNode, environment Environment) (Object, error) {
 	container, err := Eval(n.Container, environment)
@@ -93,7 +130,7 @@ func evalDictionary(n *parser.DictionaryNode, environment Environment) (Object, 
 		return &Error{}, errors.New("ObjectError: Undefined identifier: " + container.String())
 	}
 
-	if container.Type() != lexer.DICTIONARY_OBJ {
+	if container.Type() != lexer.DICTIONARY {
 		return &Error{}, errors.New("ObjectError: Object returned not type DICTIONARY")
 	}
 
@@ -283,7 +320,7 @@ func evalBinaryOp(node *parser.BinOpNode, environment Environment) (Object, erro
 
 // Since IN requires Identifier, must be done before evaluated,
 func handleInOperation(node *parser.BinOpNode, left Object) (bool, Object, error) {
-	if node.Operation == lexer.IN && node.Right.Type() == lexer.IDENTIFIER_NODE {
+	if node.Operation == lexer.IN && node.Right.Type() == lexer.IDENTIFIER {
 		toIdentifier := node.Right.(*parser.IdentifierNode).Identifier
 
 		if leftUnit, ok := left.(*Unit); ok {
@@ -295,7 +332,7 @@ func handleInOperation(node *parser.BinOpNode, left Object) (bool, Object, error
 			return true, converted, err
 		}
 
-	} else if node.Operation == lexer.IN && node.Right.Type() != lexer.IDENTIFIER_NODE {
+	} else if node.Operation == lexer.IN && node.Right.Type() != lexer.IDENTIFIER {
 		return true, &Error{}, errors.New("ConversionError: IN cannot convert " + left.Type() + " and " + node.Right.Type())
 	}
 	return false, nil, nil
@@ -379,8 +416,8 @@ func convert(u float64, from string, to string) (unit *Unit, err error) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			unit = &Unit{}
-			err = errors.New("ConversionError: Units " + from + " and " + to + " cannot be converted")
+			err = nil
+			unit = &Unit{u, to}
 		}
 	}()
 

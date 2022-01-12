@@ -179,16 +179,19 @@ func evalIdentifier(n *parser.IdentifierNode, environment Environment) (Object, 
 // Extracted <- function call (user defined or predefined)
 func evalFunctionCall(n *parser.FunctionCallNode, environment Environment) (Object, error) {
 	var functions = map[string]func(Program, Environment) (Object, error){
-		"frac":   frac,
-		"print":  print,
-		"root":   root,
-		"lookup": lookup,
-		"sin":    sin,
-		"cos":    cos,
-		"tan":    tan,
-		"asin":   asin,
-		"acos":   acos,
-		"atan":   atan,
+		"frac":    frac,
+		"print":   print,
+		"root":    root,
+		"lookup":  lookup,
+		"sin":     sin,
+		"cos":     cos,
+		"tan":     tan,
+		"asin":    asin,
+		"acos":    acos,
+		"atan":    atan,
+		"prev":    prev,
+		"history": history,
+		"sum":     sum,
 	}
 
 	if function, ok := functions[n.Identifier]; ok {

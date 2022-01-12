@@ -10,10 +10,51 @@ import (
 
 /* -------------------------------- Functions ------------------------------- */
 
+/* ----------------------------- Quality Of Life ---------------------------- */
+
 // Print a string representation of the parameters
 func print(params Program, environment Environment) (Object, error) {
 	fmt.Println(paramsToString(params))
 	return &Nil{}, nil
+}
+
+// Lookup element in periodic table and return JSON lookup(ELEMENT)
+func lookup(params Program, environment Environment) (Object, error) {
+	if len(params.Objects) < 1 {
+		return &Error{}, errors.New("LookupError: expected parameter length > 1")
+	} else if params.Objects[0].Type() != lexer.STRING {
+		return &Error{}, errors.New("LookupError: expected type STRING or IDENTIFIER, not type " + params.Objects[0].Type())
+	}
+
+	element, err := lookupElements(params.Objects[0].(*String).Value, environment.PeriodicTable)
+	if err != nil {
+		return &Error{}, errors.New("LookupError: element " + params.Objects[0].(*String).Value + " does not exist")
+	}
+
+	for key, value := range element.(*Dictionary).Dictionary {
+		if strings.Contains("name appearance atomic_mass category number period phase summary symbol shells", key) {
+			fmt.Println(key, ":", value)
+		}
+	}
+
+	return element, nil
+}
+
+func prev(params Program, environment Environment) (Object, error) {
+	if len(environment.History.Array) < 1 {
+		return &Error{}, errors.New("PrevError: history length < 1")
+	}
+	return environment.History.Array[len(environment.History.Array)-1], nil
+}
+
+func history(params Program, environment Environment) (Object, error) {
+	return &environment.History, nil
+}
+
+/* ------------------------------ Mathematical ------------------------------ */
+
+func sum(params Program, environment Environment) (Object, error) {
+	return &Error{}, errors.New("I fucked up")
 }
 
 // Just divide 2 numbers frac(NUMERATOR, DENOMENATOR)
@@ -52,30 +93,6 @@ func root(params Program, environment Environment) (Object, error) {
 	} else {
 		return &Error{}, errors.New("RootError: cannot raise type " + params.Objects[0].Type() + " to a power")
 	}
-}
-
-// Lookup element in periodic table and return JSON lookup(ELEMENT)
-// TODO: create element objects and return that instead
-func lookup(params Program, environment Environment) (Object, error) {
-	if len(params.Objects) < 1 {
-		return &Error{}, errors.New("LookupError: expected parameter length > 1")
-	} else if params.Objects[0].Type() != lexer.STRING {
-		return &Error{}, errors.New("LookupError: expected type STRING or IDENTIFIER, not type " + params.Objects[0].Type())
-	}
-
-	element, err := lookupElements(params.Objects[0].(*String).Value, environment.PeriodicTable)
-	if err != nil {
-		return &Error{}, errors.New("LookupError: element " + params.Objects[0].(*String).Value + " does not exist")
-	}
-
-	for key, value := range element.(*Dictionary).Dictionary {
-		if strings.Contains("name appearance atomic_mass category number period phase summary symbol shells", key) {
-			fmt.Println(key, ":", value)
-		}
-	}
-
-	return &Nil{}, nil
-
 }
 
 /* ------------------------- Trigonometry Functions ------------------------- */

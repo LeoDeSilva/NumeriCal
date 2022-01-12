@@ -17,12 +17,13 @@ type Environment struct {
 	Constants     map[string]Object
 	Functions     map[string]*parser.FunctionDefenitionNode
 	PeriodicTable map[string]interface{}
+	History       Array
 }
 
 // Create constants for environment.Constants
 func GenerateConstants() map[string]Object {
 	return map[string]Object{
-		"PI": formatFloat(3.141592),
+		"Pi": formatFloat(3.141592),
 		"E":  formatFloat(2.718281),
 	}
 }
@@ -39,6 +40,7 @@ func GenerateEnvironment() Environment {
 		Functions:     make(map[string]*parser.FunctionDefenitionNode),
 		PeriodicTable: periodicTableJson,
 		Constants:     GenerateConstants(),
+		History:       Array{make([]Object, 0)},
 	}
 }
 

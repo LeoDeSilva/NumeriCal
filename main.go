@@ -11,30 +11,31 @@ import (
 	"strings"
 )
 
-func interpretProgram(program string, environment evaluator.Environment) error {
+func interpretProgram(program string, environment evaluator.Environment) (evaluator.Object, error) {
 	l := lexer.NewLexer(strings.TrimSpace(program))
 	tokens, err := l.Lex()
 	if err != nil {
-		return err
+		return &evaluator.Error{}, err
 	}
 
 	p := parser.NewParser(tokens)
 	ast, err := p.Parse()
 	if err != nil {
-		return err
+		return &evaluator.Error{}, err
 	}
-	fmt.Println(ast)
 
 	obj, err := evaluator.Eval(&ast, environment)
 	if err != nil {
-		return err
+		return &evaluator.Error{}, err
 	}
 
 	objString := obj.String()
 	if objString != "" {
 		fmt.Println(objString)
+		return obj, nil
 	}
-	return nil
+
+	return &evaluator.Nil{}, nil
 }
 
 func startRepl(in io.Reader, out io.Writer) error {
@@ -55,11 +56,12 @@ func startRepl(in io.Reader, out io.Writer) error {
 			break
 		}
 
-		err := interpretProgram(line, environment)
+		obj, err := interpretProgram(line, environment)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
+		environment.History.Array = append(environment.History.Array, obj.(*evaluator.Program).Objects...)
 
 	}
 
@@ -71,7 +73,7 @@ func main() {
 	if len(os.Args) > 1 {
 		environment := evaluator.GenerateEnvironment()
 		program := strings.Join(os.Args[1:], " ")
-		err := interpretProgram(program, environment)
+		_, err := interpretProgram(program, environment)
 
 		if err != nil {
 			fmt.Println(err)

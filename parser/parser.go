@@ -185,7 +185,9 @@ func (p *Parser) parsePrefix() (Node, error) {
 		return p.parsePostfix(&ArrayNode{ProgramNode{Nodes: nodes}})
 
 	case lexer.IDENTIFIER:
+		var node Node
 		identifier := p.token.Literal
+		node = &IdentifierNode{Identifier: identifier}
 		p.advance()
 		// Parse Function Call -> ID()
 		if p.token.Type == lexer.LPAREN {
@@ -194,11 +196,10 @@ func (p *Parser) parsePrefix() (Node, error) {
 				return &ErrorNode{}, err
 			}
 			p.advance()
-			return &FunctionCallNode{identifier, ProgramNode{params}}, nil
+			node = &FunctionCallNode{identifier, ProgramNode{params}}
 		}
 
-		return p.parsePostfix(&IdentifierNode{Identifier: identifier})
-
+		return p.parsePostfix(node)
 	}
 	return &ErrorNode{}, errors.New("SyntaxError: parsePrefix() unsupported prefix:" + p.token.Literal)
 }

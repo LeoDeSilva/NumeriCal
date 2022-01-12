@@ -142,6 +142,18 @@ func evalDictionary(n *parser.DictionaryNode, environment Environment) (Object, 
 
 // Extracted <- eval identifier (periodic table, constants and variables)
 func evalIdentifier(n *parser.IdentifierNode, environment Environment) (Object, error) {
+	var keywords = map[string]func(Program, Environment) (Object, error){
+		"prev":    prev,
+		"history": history,
+	}
+	if f, ok := keywords[n.Identifier]; ok {
+		result, err := f(Program{}, environment)
+		if err != nil {
+			return &Error{}, err
+		}
+		return result, nil
+	}
+
 	if value, ok := environment.Constants[n.Identifier]; ok {
 		return value, nil
 	}

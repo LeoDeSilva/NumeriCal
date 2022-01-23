@@ -414,7 +414,6 @@ func handleReturn(obj Object, err error) (Object, error) {
 
 // Convert UNITS
 func convert(u float64, from string, to string) (unit *Unit, err error) {
-	//TODO: Binary and Hex
 	if from == to {
 		return &Unit{Value: u, Unit: from}, nil
 	}

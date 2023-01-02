@@ -2,7 +2,7 @@
 A general purpose calacultor with periodic table support, unit conversions and simple natural language support. 
 
 # Useage
-`git clone` repository and a pre-compiled `main` binary should be found. Either run with `./main` or rename and move into path to call from terminal. 
+`git clone` repository and a pre-compiled `main` binary should be found. Either run with `./main` or rename and move into path for quick access. 
 ```
 >>people = 6
 >>totalCost = 160
